@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fidra — The rail that moves trust</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#0A1F3C',
+            trust: '#0B7A5F',
+            rail: '#2F6FED',
+            mint: '#2FD3A0',
+            amber: '#F0A62B',
+            paper: '#F7F6F2',
+            cloud: '#EEF1F5',
+            slate600: '#4B5B73',
+            slate300: '#C5CEDA',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Sora', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    h1, h2, h3 { font-family: 'Sora', system-ui, sans-serif; }
+  </style>
+</head>
+<body class="bg-paper text-ink min-h-screen">
+
+  <!-- Nav -->
+  <header class="border-b border-slate300/50 bg-white/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-mint flex items-center justify-center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="6" cy="6" r="2.2" fill="#0A1F3C"/>
+            <circle cx="6" cy="18" r="2.2" fill="#0A1F3C"/>
+            <circle cx="18" cy="6" r="2.2" fill="#0A1F3C"/>
+            <path d="M6 8.2V15.8M6 6H16M6 12H14" stroke="#0A1F3C" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="font-display font-semibold text-xl tracking-tight">Fidra</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/docs" class="text-sm font-medium text-slate600 hover:text-ink transition">API Docs</a>
+        <a href="/docs" class="inline-flex items-center px-4 py-2 rounded-lg bg-trust text-white text-sm font-medium hover:bg-trust/90 transition">
+          Get API access
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-5xl mx-auto px-6 pt-16 pb-20">
+    <div class="max-w-2xl">
+      <p class="text-sm font-medium text-trust uppercase tracking-wider mb-4">Reference exchange network</p>
+      <h1 class="text-4xl sm:text-5xl font-bold leading-tight tracking-tight mb-6">
+        The rail that moves trust between institutions.
+      </h1>
+      <p class="text-lg text-slate600 leading-relaxed mb-8 max-w-xl">
+        Fidra lets banks, microfinance institutions and fintechs request, exchange and track customer references instantly via API — replacing days of email and phone follow-up with minutes.
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a href="/docs" class="inline-flex items-center px-5 py-3 rounded-lg bg-trust text-white font-medium hover:bg-trust/90 transition">
+          Explore the API
+        </a>
+        <a href="/docs" class="inline-flex items-center px-5 py-3 rounded-lg border border-ink/15 text-ink font-medium hover:bg-cloud transition">
+          Read the docs
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="bg-white border-y border-slate300/50">
+    <div class="max-w-5xl mx-auto px-6 py-16">
+      <h2 class="text-2xl font-semibold mb-10">How it works</h2>
+      <div class="grid sm:grid-cols-3 gap-8">
+        <div>
+          <div class="w-10 h-10 rounded-lg bg-cloud flex items-center justify-center mb-4 font-mono text-sm font-medium text-trust">01</div>
+          <h3 class="font-semibold mb-2">Request</h3>
+          <p class="text-slate600 text-sm leading-relaxed">Institution A sends a structured reference request for a customer via a single API call.</p>
+        </div>
+        <div>
+          <div class="w-10 h-10 rounded-lg bg-cloud flex items-center justify-center mb-4 font-mono text-sm font-medium text-trust">02</div>
+          <h3 class="font-semibold mb-2">Authorize</h3>
+          <p class="text-slate600 text-sm leading-relaxed">The referee receives a secure link, reviews the request and confirms with one click.</p>
+        </div>
+        <div>
+          <div class="w-10 h-10 rounded-lg bg-cloud flex items-center justify-center mb-4 font-mono text-sm font-medium text-trust">03</div>
+          <h3 class="font-semibold mb-2">Complete</h3>
+          <p class="text-slate600 text-sm leading-relaxed">Both sides get a signed, auditable response and real-time status — usually in minutes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Value props -->
+  <section class="max-w-5xl mx-auto px-6 py-16">
+    <div class="grid sm:grid-cols-2 gap-10">
+      <div>
+        <h2 class="text-2xl font-semibold mb-4">Built for institutions that can't afford to guess.</h2>
+        <p class="text-slate600 leading-relaxed">
+          Manual references create delays, frozen accounts and compliance risk. Fidra turns the process into infrastructure: clear status, clear record, clear answer.
+        </p>
+      </div>
+      <div class="space-y-4">
+        <div class="flex gap-3 items-start">
+          <div class="w-5 h-5 rounded-full bg-verified/15 flex items-center justify-center mt-0.5">
+            <div class="w-2 h-2 rounded-full bg-verified"></div>
+          </div>
+          <div>
+            <p class="font-medium">Real-time status</p>
+            <p class="text-sm text-slate600">Customers and staff always know where a reference stands.</p>
+          </div>
+        </div>
+        <div class="flex gap-3 items-start">
+          <div class="w-5 h-5 rounded-full bg-verified/15 flex items-center justify-center mt-0.5">
+            <div class="w-2 h-2 rounded-full bg-verified"></div>
+          </div>
+          <div>
+            <p class="font-medium">Full audit trail</p>
+            <p class="text-sm text-slate600">Every action is timestamped and attributable.</p>
+          </div>
+        </div>
+        <div class="flex gap-3 items-start">
+          <div class="w-5 h-5 rounded-full bg-verified/15 flex items-center justify-center mt-0.5">
+            <div class="w-2 h-2 rounded-full bg-verified"></div>
+          </div>
+          <div>
+            <p class="font-medium">API-first</p>
+            <p class="text-sm text-slate600">Integrate once. Request, track and receive programmatically.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA band -->
+  <section class="bg-ink text-white">
+    <div class="max-w-5xl mx-auto px-6 py-14 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+      <div>
+        <h2 class="text-xl font-semibold mb-1">Ready to move trust faster?</h2>
+        <p class="text-white/70 text-sm">Start with the API docs. Demo keys are available on first deploy.</p>
+      </div>
+      <a href="/docs" class="inline-flex items-center px-5 py-3 rounded-lg bg-mint text-ink font-medium hover:bg-mint/90 transition">
+        Open API Docs
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate300/50">
+    <div class="max-w-5xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate600">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-md bg-mint flex items-center justify-center">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <circle cx="6" cy="6" r="2.2" fill="#0A1F3C"/>
+            <circle cx="6" cy="18" r="2.2" fill="#0A1F3C"/>
+            <circle cx="18" cy="6" r="2.2" fill="#0A1F3C"/>
+            <path d="M6 8.2V15.8M6 6H16M6 12H14" stroke="#0A1F3C" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="font-display font-semibold text-ink">Fidra</span>
+      </div>
+      <p>The rail that moves trust between institutions.</p>
+    </div>
+  </footer>
+
+</body>
+</html>

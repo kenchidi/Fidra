@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Thank you — Fidra{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl border border-slate300 p-8 text-center">
+  {% if action == "authorized" %}
+    <div class="w-14 h-14 rounded-full bg-verified/15 mx-auto flex items-center justify-center mb-5">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#12A072" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6L9 17l-5-5"/>
+      </svg>
+    </div>
+    <h1 class="text-xl font-semibold mb-2">Reference authorized</h1>
+    <p class="text-slate600">Thank you. Your response has been securely recorded and sent to the requesting institution.</p>
+  {% else %}
+    <div class="w-14 h-14 rounded-full bg-cloud mx-auto flex items-center justify-center mb-5">
+      <span class="text-2xl text-slate600">✕</span>
+    </div>
+    <h1 class="text-xl font-semibold mb-2">Request declined</h1>
+    <p class="text-slate600">You have declined this reference request. The requesting institution has been notified.</p>
+  {% endif %}
+</div>
+{% endblock %}
