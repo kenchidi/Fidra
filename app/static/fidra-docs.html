@@ -1,0 +1,147 @@
+<!doctype html>
+<!--
+  Fidra API docs. Reads /openapi.json from the same origin and renders it.
+  Serve it at /docs from FastAPI:
+    app = FastAPI(docs_url=None)
+    @app.get("/docs", include_in_schema=False)
+    def docs(): return FileResponse("static/fidra-docs.html")
+  Open it from another origin or a file with ?base=https://your-api (needs CORS), or load a saved openapi.json when prompted.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fidra API Docs</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232FD3A0'/%3E%3Cpath d='M22 48V18H44M22 32H36' fill='none' stroke='%230A1F3C' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cg fill='%230A1F3C'%3E%3Ccircle cx='44' cy='18' r='6'/%3E%3Ccircle cx='36' cy='32' r='6'/%3E%3Ccircle cx='22' cy='48' r='6'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Sora:wght@600;700&display=swap">
+<style>
+:root{--bg:#fff;--sf:#EEF1F5;--tx:#0A1F3C;--mu:#4B5B73;--ln:#C5CEDA;--ac:#0B7A5F;--lk:#2F6FED;--cb:#0A1F3C;--ok:#DDF3EB;--okt:#0B5F4A;--wn:#FBEBCB;--wnt:#7A5200;--bd:#F8DAD7;--bdt:#8E2A24;--in:#E3EBFD;--int:#1F4FB8}
+:root[data-theme=dark]{--bg:#07142A;--sf:#0E2240;--tx:#E8EEF6;--mu:#9FB1C7;--ln:#1E3556;--ac:#2FD3A0;--lk:#6E9BFF;--cb:#0A1B35;--ok:#0F3B32;--okt:#2FD3A0;--wn:#3D2E10;--wnt:#F0A62B;--bd:#3F1B1B;--bdt:#F29B94;--in:#152B55;--int:#9DBBFF}
+*{box-sizing:border-box}[hidden]{display:none!important}html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 Inter,system-ui,sans-serif}
+code,pre,.mono,input,textarea{font-family:'JetBrains Mono',ui-monospace,monospace}
+h1,h2,h3,h4{font-family:Sora,Inter,sans-serif;letter-spacing:-.02em;margin:0}
+a{color:var(--lk);text-decoration:none}
+header{position:sticky;top:0;z-index:5;height:56px;background:#0A1F3C;color:#fff;display:flex;align-items:center;gap:14px;padding:0 24px}
+.brand{display:flex;align-items:center;gap:10px;color:#fff;font:700 20px Sora}
+.sp{flex:1}header a,header button{color:#9FB1C7;font-size:13px}
+header button{background:none;border:1px solid #1E3556;border-radius:8px;padding:5px 10px;cursor:pointer;font-family:Inter}
+.hs{font-size:13px;color:#9FB1C7}.hs::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#9FB1C7;margin-right:7px}
+.hs.up::before{background:#2FD3A0}.hs.down::before{background:#F0A62B}
+.wrap{display:grid;grid-template-columns:272px minmax(0,1fr);max-width:1240px;margin:0 auto}
+nav{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:20px 16px;border-right:1px solid var(--ln)}
+nav h4{font:600 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin:20px 0 6px}
+nav a{display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:6px;color:var(--tx);font-size:13px}nav a:hover{background:var(--sf)}
+nav input{width:100%}
+main{padding:40px 48px 80px;min-width:0}
+section{margin-bottom:48px}
+.ov{font:600 11px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--ac)}
+h1{font-size:40px;line-height:1.15;margin:6px 0 8px}h2{font-size:26px;margin:0 0 14px}h3{font-size:18px;margin:14px 0 10px}
+.lead{font-size:18px;color:var(--mu);margin:0 0 20px}
+.card,.op,.sch{border:1px solid var(--ln);border-radius:12px;padding:20px 24px;margin:14px 0;background:var(--bg)}
+.op{padding:24px}.oh{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.oh code{font-size:15px;font-weight:500}
+.m{font:600 11px 'JetBrains Mono';padding:2px 7px;border-radius:5px;letter-spacing:.04em}
+.GET{background:var(--in);color:var(--int)}.POST{background:var(--ok);color:var(--okt)}.PUT,.PATCH,.DELETE{background:var(--wn);color:var(--wnt)}
+.chip{display:inline-block;padding:2px 10px;border-radius:999px;font:500 12px Inter;margin:2px 4px 2px 0}
+.ok{background:var(--ok);color:var(--okt)}.warn{background:var(--wn);color:var(--wnt)}.bad{background:var(--bd);color:var(--bdt)}.info{background:var(--in);color:var(--int)}.neu{background:var(--sf);color:var(--mu)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 14px}
+th{text-align:left;font:600 11px Inter;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
+td,th{padding:8px 10px 8px 0;border-bottom:1px solid var(--ln);vertical-align:top}
+code{background:var(--sf);padding:1px 6px;border-radius:5px;font-size:12.5px}.req{color:var(--ac);font-weight:600}
+input,textarea{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:9px 12px;font-size:13px}
+input:focus,textarea:focus{outline:2px solid var(--ac);outline-offset:1px}
+label{display:block;font-size:12.5px;color:var(--mu);margin:10px 0 4px}
+pre{background:var(--cb);color:#E8EEF6;border-radius:0 0 8px 8px;padding:14px 16px;overflow:auto;font-size:12.5px;line-height:1.6;margin:0}
+.tabs{display:flex;gap:4px;background:#0E2240;border-radius:8px 8px 0 0;padding:6px 8px}
+.tabs button{background:none;border:0;color:#9FB1C7;font:500 12px Inter;padding:4px 10px;border-radius:6px;cursor:pointer}
+.tabs button.on{background:#1E3556;color:#fff}.tabs .cp{margin-left:auto}
+.btn,.send{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 16px;font:600 13px Sora;cursor:pointer;margin-top:12px}
+:root[data-theme=dark] .send{color:#0A1F3C}
+details.try{margin-top:16px;border-top:1px solid var(--ln);padding-top:12px}summary{cursor:pointer;font:600 14px Sora}
+.res pre{border-radius:8px;margin-top:8px;max-height:360px}.res small{color:var(--mu)}
+.sch summary{font-size:14px}.sch{padding:12px 20px}
+@media(max-width:900px){.wrap{display:block}nav{display:none}main{padding:24px 18px}}
+</style>
+</head>
+<body>
+<header>
+ <a class="brand" href="#intro"><svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2FD3A0"/><path d="M22 48V18H44M22 32H36" fill="none" stroke="#0A1F3C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><g fill="#0A1F3C"><circle cx="44" cy="18" r="6"/><circle cx="36" cy="32" r="6"/><circle cx="22" cy="48" r="6"/></g></svg>Fidra</a>
+ <span class="chip neu" id="ver" style="background:#142B4D;color:#9FB1C7"></span><span class="sp"></span>
+ <span id="hs" class="hs">Checking…</span><a id="oj" target="_blank" rel="noopener">openapi.json</a><button id="th">Theme</button>
+</header>
+<div class="wrap"><nav id="nav"></nav><main id="main"><p>Loading the Fidra API spec…</p></main></div>
+<script>
+const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const DEFAULT_BASE='https://fidra-exl4.onrender.com',q=new URLSearchParams(location.search),root=document.documentElement;
+let BASE=(q.get('base')||(location.protocol.startsWith('http')?location.origin:DEFAULT_BASE)).replace(/\/$/,''),KEY='',spec,ops=[];
+try{root.dataset.theme=sessionStorage.fidraTheme||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}catch(e){}
+$('#th').onclick=()=>{const t=root.dataset.theme==='dark'?'light':'dark';root.dataset.theme=t;try{sessionStorage.fidraTheme=t}catch(e){}};
+
+const R=s=>s&&s.$ref?spec.components.schemas[s.$ref.split('/').pop()]:s;
+function tstr(s){if(!s)return'any';if(s.$ref)return s.$ref.split('/').pop();if(s.anyOf)return s.anyOf.map(tstr).join(' | ');if(s.type==='array')return tstr(s.items)+'[]';if(s.enum)return'enum';return(s.format?s.type+' ('+s.format+')':s.type)||'object'}
+const EX={customer_full_name:'Adaeze Okafor',customer_phone:'+2348012345678',customer_email:'adaeze@example.com',referee_account_number:'0123456789',referee_bank_code:'058',referee_account_name:'Adaeze Okafor',purpose:'account_opening',code:'MFB-0231',name:'Sunrise Microfinance Bank',bank_code:'090',good_standing:'yes',relationship:'1-3_years',comments:'Account in good standing.',reason:'Not my customer'};
+function ex(s,k){s=R(s)||{};if(s.anyOf)return ex(s.anyOf.find(x=>x.type!=='null'),k);if(k in EX)return EX[k];if(s.default!==undefined)return s.default;if(s.enum)return s.enum[0];
+ switch(s.type){case'object':return Object.fromEntries(Object.entries(s.properties||{}).filter(([p,v])=>(s.required||[]).includes(p)||p in EX||v.default!==undefined).map(([p,v])=>[p,ex(v,p)]));case'array':return[ex(s.items)];case'integer':case'number':return 0;case'boolean':return true;default:return'string'}}
+const tone=s=>/authorized|completed/.test(s)?'ok':/declined|failed|cancelled|expired/.test(s)?'bad':s==='draft'?'neu':'info';
+function props(s){s=R(s)||{};const r=s.required||[];return'<table><tr><th>Field<th>Type<th>Notes'+Object.entries(s.properties||{}).map(([k,v])=>`<tr><td class=mono>${k}<td><code>${esc(tstr(v))}</code><td>${r.includes(k)?'<span class=req>required</span>':'optional'}${v.default!==undefined&&v.default!==''?` · default <code>${esc(JSON.stringify(v.default))}</code>`:''}`).join('')+'</table>'}
+
+function op(o){
+ const prm=o.parameters||[],rb=o.requestBody&&o.requestBody.content,ct=rb&&Object.keys(rb)[0],bs=rb&&rb[ct].schema,body=bs?ex(bs):null,form=ct&&ct.includes('urlencoded');
+ const resp=Object.entries(o.responses||{}),ok=resp.find(([c])=>c[0]==='2'),html=ok&&Object.keys(ok[1].content||{})[0]==='text/html';
+ const V=o.v.toUpperCase(),u=BASE+o.p,hdr={};
+ if(prm.some(x=>x.name==='X-API-Key'))hdr['X-API-Key']='YOUR_API_KEY';if(ct)hdr['Content-Type']=ct;
+ const hk=Object.keys(hdr).length,py=x=>JSON.stringify(x).replace(/\btrue\b/g,'True').replace(/\bfalse\b/g,'False').replace(/\bnull\b/g,'None');
+ const curl=`curl -X ${V} "${u}"`+Object.entries(hdr).map(([k,v])=>` \\\n  -H "${k}: ${v}"`).join('')+(body?(form?` \\\n  -d "${new URLSearchParams(body)}"`:` \\\n  -d '${JSON.stringify(body,null,2)}'`):'');
+ const pyc=`import requests\n\nr = requests.${o.v}(\n    "${u}",`+(hk?`\n    headers=${py(hdr)},`:'')+(body?`\n    ${form?'data':'json'}=${py(body)},`:'')+`\n)\nprint(r.status_code, r.text)`;
+ const jsc=`const r = await fetch("${u}", {\n  method: "${V}",`+(hk?`\n  headers: ${JSON.stringify(hdr)},`:'')+(body?`\n  body: ${form?`new URLSearchParams(${JSON.stringify(body)})`:`JSON.stringify(${JSON.stringify(body)})`},`:'')+`\n});\nconsole.log(await r.${html?'text':'json'}());`;
+ const rt=r=>{const k=Object.keys(r.content||{})[0];return k?k+' → '+tstr(r.content[k].schema):'—'};
+ return`<div class="op" id="${o.operationId}"><div class="oh"><span class="m ${V}">${V}</span><code>${esc(o.p)}</code></div><h3>${esc(o.summary||'')}</h3>
+ ${prm.length?'<table><tr><th>Parameter<th>In<th>Type<th><tr>'.slice(0,-4)+prm.map(x=>`<tr><td class=mono>${x.name}<td>${x.in}<td><code>${esc(tstr(x.schema))}</code><td>${x.required?'<span class=req>required</span>':'optional'}`).join('')+'</table>':''}
+ ${bs?`<p style="margin:8px 0 0;color:var(--mu)">Request body · <code>${ct}</code></p>`+props(bs):''}
+ <table><tr><th>Response<th>Description<th>Returns${resp.map(([c,r])=>`<tr><td><span class="chip ${c[0]==='2'?'ok':'bad'}">${c}</span><td>${esc(r.description)}<td><code>${esc(rt(r))}</code>`).join('')}</table>
+ <div class="code"><div class="tabs"><button class="on" data-l="0">curl</button><button data-l="1">Python</button><button data-l="2">JavaScript</button><button class="cp">Copy</button></div><pre>${esc(curl)}</pre><pre hidden>${esc(pyc)}</pre><pre hidden>${esc(jsc)}</pre></div>
+ <details class="try" data-id="${o.operationId}"><summary>Try it</summary>
+ ${prm.filter(x=>x.in==='path').map(x=>`<label>${x.name}<input data-path="${x.name}" placeholder="${x.name}"></label>`).join('')}
+ ${body?`<label>Request body (${ct})</label><textarea rows="${Math.min(14,JSON.stringify(body,null,2).split('\n').length+1)}">${esc(JSON.stringify(body,null,2))}</textarea>`:''}
+ <button class="send">Send request</button><div class="res"></div></details></div>`}
+
+function render(){
+ const sc=spec.components&&spec.components.schemas||{},tags=[...new Set(ops.map(o=>o.tag))];
+ $('#ver').textContent='v'+spec.info.version;$('#oj').href=BASE+'/openapi.json';
+ $('#nav').innerHTML='<input id="flt" placeholder="Filter endpoints"><h4>Start</h4><a href="#intro">Introduction</a><a href="#auth">Authentication</a><a href="#status">Request statuses</a>'+tags.map(t=>`<h4>${t}</h4>`+ops.filter(o=>o.tag===t).map(o=>`<a class="ep" href="#${o.operationId}"><span class="m ${o.v.toUpperCase()}">${o.v.toUpperCase()}</span>${esc(o.p)}</a>`).join('')).join('')+'<h4>Reference</h4><a href="#schemas">Schemas</a>';
+ $('#flt').oninput=e=>$$('.ep').forEach(a=>a.hidden=!a.textContent.toLowerCase().includes(e.target.value.toLowerCase()));
+ const tag=(spec.info.description||'').split('—').pop().trim()||'The rail that moves trust between institutions.';
+ $('#main').innerHTML=`<section id="intro"><div class="ov">Reference exchange API</div><h1>Fidra API</h1><p class="lead">${esc(tag)}</p>
+ <label for="base">Base URL</label><input id="base" value="${esc(BASE)}">
+ <div class="card"><b>Quickstart</b><ol style="margin:8px 0 0;padding-left:20px"><li><code>POST /v1/institutions</code> with a <code>code</code> and <code>name</code>. Save the returned <code>api_key</code>.</li><li><code>POST /v1/reference-requests</code> with your key in <code>X-API-Key</code>, the customer's name, and the referee's account number and bank code. The response includes <code>referee_authorize_url</code> and <code>customer_status_url</code>.</li><li><code>GET /v1/reference-requests/{public_id}</code> to follow <code>status</code> and <code>history</code> until the request reaches a final status.</li></ol></div></section>
+ <section id="auth"><h2>Authentication</h2><p>Send your institution's key in the <code>X-API-Key</code> header on reference-request endpoints. Paste it here to use it in the Try it panels. It stays in this tab only and is never added to the code samples.</p><label for="key">X-API-Key</label><input id="key" type="password" autocomplete="off" value="${esc(KEY)}" placeholder="Paste your API key"></section>
+ <section id="status"><h2>Request statuses</h2><p>A reference request moves through these <code>status</code> values:</p>${(sc.RequestStatus&&sc.RequestStatus.enum||[]).map(s=>`<span class="chip ${tone(s)}">${s}</span>`).join('')}</section>
+ ${tags.map(t=>`<section id="tag-${t}"><h2>${t}</h2>${ops.filter(o=>o.tag===t).map(op).join('')}</section>`).join('')}
+ <section id="schemas"><h2>Schemas</h2>${Object.entries(sc).filter(([n])=>!/ValidationError$/.test(n)).map(([n,s])=>`<details class="sch"><summary class="mono">${n}</summary>${s.enum?s.enum.map(e=>`<span class="chip ${tone(e)}">${e}</span>`).join(''):props(s)}</details>`).join('')}</section>`;
+ $('#key').oninput=e=>KEY=e.target.value;
+ $('#base').onchange=e=>{BASE=e.target.value.replace(/\/$/,'');render();health()};
+}
+function start(s){spec=s;ops=[];for(const[p,m]of Object.entries(s.paths))for(const[v,o]of Object.entries(m))ops.push({...o,p,v,tag:(o.tags||[])[0]||'System'});render()}
+async function health(){const h=$('#hs');h.className='hs';h.textContent='Checking…';try{const r=await fetch(BASE+'/health');if(!r.ok)throw 0;h.classList.add('up');h.textContent='All systems operational'}catch(e){h.classList.add('down');h.textContent='API unreachable'}}
+async function load(){
+ try{const r=await fetch(q.get('spec')||BASE+'/openapi.json');if(!r.ok)throw 0;start(await r.json())}
+ catch(e){$('#main').innerHTML='<div class="op"><h2>Could not load the spec</h2><p>Fetching <code>'+esc(BASE)+'/openapi.json</code> failed. The API may be waking up, or CORS may be off for this origin. Load a saved copy instead:</p><input type="file" id="f" accept=".json">'+'</div>';$('#f').onchange=async e=>start(JSON.parse(await e.target.files[0].text()))}
+ health()}
+async function send(d){
+ const o=ops.find(x=>x.operationId===d.dataset.id),out=$('.res',d),h={},ta=$('textarea',d);let p=o.p,body;
+ $$('[data-path]',d).forEach(i=>p=p.replace('{'+i.dataset.path+'}',encodeURIComponent(i.value)));
+ if((o.parameters||[]).some(x=>x.name==='X-API-Key')&&KEY)h['X-API-Key']=KEY;
+ if(ta){const ct=Object.keys(o.requestBody.content)[0];h['Content-Type']=ct;try{const j=JSON.parse(ta.value);body=ct.includes('urlencoded')?new URLSearchParams(j).toString():JSON.stringify(j)}catch(e){out.innerHTML='<span class="chip bad">Body is not valid JSON</span>';return}}
+ out.innerHTML='<span class="chip info">Sending…</span> <small>The first call can take about 30 seconds if the server is asleep.</small>';
+ const t0=performance.now();
+ try{const r=await fetch(BASE+p,{method:o.v.toUpperCase(),headers:h,body});let x=await r.text();try{x=JSON.stringify(JSON.parse(x),null,2)}catch(e){}
+  out.innerHTML=`<span class="chip ${r.ok?'ok':'bad'}">${r.status} ${esc(r.statusText)}</span> <small>${Math.round(performance.now()-t0)} ms</small><pre>${esc(x.slice(0,4000))}</pre>`}
+ catch(e){out.innerHTML='<span class="chip bad">Network error</span> <small>Is the server awake, and is CORS enabled for this origin?</small>'}}
+document.addEventListener('click',async e=>{const t=e.target,c=t.closest&&t.closest('.code');
+ if(t.dataset&&t.dataset.l!==undefined&&c){$$('.tabs button[data-l]',c).forEach(b=>b.classList.toggle('on',b===t));$$('pre',c).forEach((p,i)=>p.hidden=String(i)!==t.dataset.l)}
+ else if(t.classList.contains('cp')&&c){try{await navigator.clipboard.writeText($$('pre',c).find(p=>!p.hidden).textContent);t.textContent='Copied';setTimeout(()=>t.textContent='Copy',1200)}catch(x){}}
+ else if(t.classList.contains('send'))send(t.closest('.try'))});
+load();
+</script>
+</body>
+</html>

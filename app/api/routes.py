@@ -12,6 +12,7 @@ from app.models.schemas import (
     StatusEventOut,
     InstitutionCreate,
     InstitutionOut,
+    InstitutionPublic,
     AuthorizeBody,
     DeclineBody,
     ResponsePayload,
@@ -46,9 +47,14 @@ def create_institution(
     return inst
 
 
-@router.get("/institutions", response_model=List[InstitutionOut], tags=["Institutions"])
-def list_institutions(session: Session = Depends(get_session)):
-    return session.exec(select(Institution)).all()
+@router.get("/institutions", response_model=List[InstitutionPublic], tags=["Institutions"])
+def list_institutions(
+    institution: Institution = Depends(get_current_institution),
+    session: Session = Depends(get_session),
+):
+    """List institutions on the network. Requires authentication. API keys are never returned."""
+    rows = session.exec(select(Institution).where(Institution.is_active == True)).all()
+    return [InstitutionPublic.model_validate(r) for r in rows]
 
 
 # ---------- Reference Requests ----------

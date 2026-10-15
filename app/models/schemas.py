@@ -90,3 +90,15 @@ class InstitutionOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class InstitutionPublic(BaseModel):
+    """Public view — never exposes api_key."""
+    id: int
+    code: str
+    name: str
+    bank_code: Optional[str]
+    is_active: bool
+
+    class Config:
+        from_attributes = True

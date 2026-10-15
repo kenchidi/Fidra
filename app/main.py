@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlmodel import Session, select
 from pathlib import Path
@@ -14,7 +15,10 @@ from app.api.public import router as public_router
 
 settings = get_settings()
 
-TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = BASE_DIR / "templates"
+STATIC_DIR = BASE_DIR / "static"
+
 jinja_env = Environment(
     loader=FileSystemLoader(str(TEMPLATES_DIR)),
     autoescape=select_autoescape(["html", "xml"]),
@@ -64,6 +68,8 @@ app = FastAPI(
     version=settings.app_version,
     description="Fidra — The rail that moves trust between institutions.",
     lifespan=lifespan,
+    docs_url=None,       # disable default Swagger UI
+    redoc_url=None,      # disable ReDoc
 )
 
 app.add_middleware(
@@ -74,6 +80,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
 app.include_router(api_router, prefix="/v1")
 app.include_router(public_router)
 
@@ -81,6 +89,12 @@ app.include_router(public_router)
 @app.get("/", response_class=HTMLResponse)
 def homepage(request: Request):
     return render("home.html", request=request)
+
+
+@app.get("/docs", include_in_schema=False)
+def custom_docs():
+    """Serve the Fidra-branded API documentation."""
+    return FileResponse(STATIC_DIR / "fidra-docs.html")
 
 
 @app.get("/health")
