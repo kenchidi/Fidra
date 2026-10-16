@@ -14,6 +14,9 @@
   <div class="mb-6">
     <p class="text-sm font-medium text-trust uppercase tracking-wide mb-1">Reference Request</p>
     <h1 class="text-2xl font-semibold leading-tight">Someone needs your confirmation</h1>
+  {% if req.path == 'path_b' %}
+  <p class="mt-2 text-sm text-trust font-medium">Bank-confirmed reference · Your bank is on the Fidra network</p>
+  {% endif %}
   </div>
 
   <div class="bg-white rounded-xl border border-slate300 p-5 mb-6 space-y-4">

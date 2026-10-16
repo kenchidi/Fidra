@@ -33,12 +33,13 @@ def render(template_name: str, **context) -> HTMLResponse:
 def seed_institutions():
     """Seed a few demo institutions so the system is usable immediately."""
     demo = [
-        {"code": "gtb", "name": "Guaranty Trust Bank", "bank_code": "058"},
-        {"code": "firstbank", "name": "First Bank of Nigeria", "bank_code": "011"},
-        {"code": "zenith", "name": "Zenith Bank", "bank_code": "057"},
-        {"code": "access", "name": "Access Bank", "bank_code": "044"},
-        {"code": "kuda", "name": "Kuda Microfinance Bank", "bank_code": "090267"},
-        {"code": "opay", "name": "OPay Digital Services", "bank_code": "100004"},
+        # network_connected=True → Path B (bank-confirmed) available
+        {"code": "gtb", "name": "Guaranty Trust Bank", "bank_code": "058", "network_connected": True},
+        {"code": "firstbank", "name": "First Bank of Nigeria", "bank_code": "011", "network_connected": True},
+        {"code": "zenith", "name": "Zenith Bank", "bank_code": "057", "network_connected": False},
+        {"code": "access", "name": "Access Bank", "bank_code": "044", "network_connected": False},
+        {"code": "kuda", "name": "Kuda Microfinance Bank", "bank_code": "090267", "network_connected": False},
+        {"code": "opay", "name": "OPay Digital Services", "bank_code": "100004", "network_connected": False},
     ]
     with Session(engine) as session:
         for item in demo:

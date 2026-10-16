@@ -4,8 +4,6 @@ from pydantic import BaseModel, Field
 from app.models.models import RequestStatus
 
 
-# ---------- Request / Response schemas ----------
-
 class CreateReferenceRequest(BaseModel):
     customer_full_name: str
     customer_phone: Optional[str] = None
@@ -17,14 +15,14 @@ class CreateReferenceRequest(BaseModel):
     referee_account_name: Optional[str] = None
 
     purpose: str = "account_opening"
-    consent_given: bool = True          # for MVP we accept it on create
+    consent_given: bool = True
 
 
 class ResponsePayload(BaseModel):
-    account_exists: bool
+    account_exists: bool = True
     account_name_match: Optional[bool] = None
-    relationship_length_band: Optional[str] = None   # e.g. "3-5_years"
-    good_standing: bool
+    relationship_length_band: Optional[str] = None
+    good_standing: bool = True
     last_activity_band: Optional[str] = None
     additional_comments: Optional[str] = None
     responded_by: str = "referee_self"
@@ -33,6 +31,8 @@ class ResponsePayload(BaseModel):
 class ReferenceRequestOut(BaseModel):
     public_id: str
     status: RequestStatus
+    path: str = "path_a"
+    assurance_level: str = "self_attested"
     customer_full_name: str
     referee_account_number: str
     referee_bank_code: str
@@ -78,6 +78,7 @@ class InstitutionCreate(BaseModel):
     code: str
     name: str
     bank_code: Optional[str] = None
+    network_connected: bool = False
 
 
 class InstitutionOut(BaseModel):
@@ -87,18 +88,19 @@ class InstitutionOut(BaseModel):
     bank_code: Optional[str]
     api_key: str
     is_active: bool
+    network_connected: bool = False
 
     class Config:
         from_attributes = True
 
 
 class InstitutionPublic(BaseModel):
-    """Public view — never exposes api_key."""
     id: int
     code: str
     name: str
     bank_code: Optional[str]
     is_active: bool
+    network_connected: bool = False
 
     class Config:
         from_attributes = True

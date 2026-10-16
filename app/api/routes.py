@@ -40,7 +40,7 @@ def create_institution(
     if existing:
         return existing
 
-    inst = Institution(code=body.code, name=body.name, bank_code=body.bank_code)
+    inst = Institution(code=body.code, name=body.name, bank_code=body.bank_code, network_connected=getattr(body, 'network_connected', False))
     session.add(inst)
     session.commit()
     session.refresh(inst)
@@ -73,6 +73,8 @@ def create_reference(
     return ReferenceRequestOut(
         public_id=req.public_id,
         status=req.status,
+        path=getattr(req, "path", "path_a"),
+        assurance_level=getattr(req, "assurance_level", "self_attested"),
         customer_full_name=req.customer_full_name,
         referee_account_number=req.referee_account_number,
         referee_bank_code=req.referee_bank_code,
@@ -101,6 +103,8 @@ def get_reference(
     return ReferenceRequestDetail(
         public_id=req.public_id,
         status=req.status,
+        path=getattr(req, "path", "path_a"),
+        assurance_level=getattr(req, "assurance_level", "self_attested"),
         customer_full_name=req.customer_full_name,
         referee_account_number=req.referee_account_number,
         referee_bank_code=req.referee_bank_code,
@@ -132,6 +136,8 @@ def list_references(
         results.append(ReferenceRequestOut(
             public_id=req.public_id,
             status=req.status,
+            path=getattr(req, "path", "path_a"),
+            assurance_level=getattr(req, "assurance_level", "self_attested"),
             customer_full_name=req.customer_full_name,
             referee_account_number=req.referee_account_number,
             referee_bank_code=req.referee_bank_code,
