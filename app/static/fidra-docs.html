@@ -27,12 +27,12 @@ header{position:sticky;top:0;z-index:5;height:56px;background:#0A1F3C;color:#fff
 header button{background:none;border:1px solid #1E3556;border-radius:8px;padding:5px 10px;cursor:pointer;font-family:Inter}
 .hs{font-size:13px;color:#9FB1C7}.hs::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#9FB1C7;margin-right:7px}
 .hs.up::before{background:#2FD3A0}.hs.down::before{background:#F0A62B}
-.wrap{display:grid;grid-template-columns:272px minmax(0,1fr);max-width:1240px;margin:0 auto}
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1480px;margin:0 auto}
 nav{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:20px 16px;border-right:1px solid var(--ln)}
 nav h4{font:600 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin:20px 0 6px}
 nav a{display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:6px;color:var(--tx);font-size:13px}nav a:hover{background:var(--sf)}
 nav input{width:100%}
-main{padding:40px 48px 80px;min-width:0}
+main{padding:40px 40px 80px;min-width:0}
 section{margin-bottom:48px}
 .ov{font:600 11px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--ac)}
 h1{font-size:40px;line-height:1.15;margin:6px 0 8px}h2{font-size:26px;margin:0 0 14px}h3{font-size:18px;margin:14px 0 10px}
@@ -59,6 +59,14 @@ pre{background:var(--cb);color:#E8EEF6;border-radius:0 0 8px 8px;padding:14px 16
 details.try{margin-top:16px;border-top:1px solid var(--ln);padding-top:12px}summary{cursor:pointer;font:600 14px Sora}
 .res pre{border-radius:8px;margin-top:8px;max-height:360px}.res small{color:var(--mu)}
 .sch summary{font-size:14px}.sch{padding:12px 20px}
+.op{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}.op.hosted{display:block}.op.hosted table{margin-bottom:0}
+.r{position:sticky;top:76px;align-self:start;min-width:0}.l{min-width:0}
+.keyb{font:500 11px Inter;padding:2px 8px;border-radius:999px;background:var(--sf);color:var(--mu);border:1px solid var(--ln)}
+.ex{border-radius:8px;margin:6px 0 14px}.l details summary{font:500 13px Inter;color:var(--mu)}.l p.d{margin:8px 0;color:var(--mu)}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 0;margin:14px 0 8px}.flow .n{display:inline-flex;align-items:center;font:500 12px Inter}
+.flow .n i{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--mu);margin-right:6px}.flow .n.ok i{background:var(--ac)}.flow .n.info i{background:var(--lk)}.flow .n.bad i{background:var(--bdt)}.flow .n.neu i{background:var(--mu)}
+.flow:not(.x) .n:not(:last-child)::after{content:'';display:inline-block;width:26px;height:2px;background:var(--ln);margin:0 8px}.flow.x .n{margin-right:6px}
+@media(max-width:1200px){.op{display:block}.r{position:static;margin-top:16px}}
 @media(max-width:900px){.wrap{display:block}nav{display:none}main{padding:24px 18px}}
 </style>
 </head>
@@ -85,38 +93,50 @@ function ex(s,k){s=R(s)||{};if(s.anyOf)return ex(s.anyOf.find(x=>x.type!=='null'
 const tone=s=>/authorized|completed/.test(s)?'ok':/declined|failed|cancelled|expired/.test(s)?'bad':s==='draft'?'neu':'info';
 function props(s){s=R(s)||{};const r=s.required||[];return'<table><tr><th>Field<th>Type<th>Notes'+Object.entries(s.properties||{}).map(([k,v])=>`<tr><td class=mono>${k}<td><code>${esc(tstr(v))}</code><td>${r.includes(k)?'<span class=req>required</span>':'optional'}${v.default!==undefined&&v.default!==''?` · default <code>${esc(JSON.stringify(v.default))}</code>`:''}`).join('')+'</table>'}
 
+const EXR={public_id:'ref_8f3a92kq',status:'referee_notified',completed_at:null,response_payload:null,note:null,from_status:'submitted',to_status:'referee_notified',actor:'system',expires_at:'2026-10-22T09:30:00Z',api_key:'YOUR_API_KEY'};
+function exr(s,k){if(k==='customer_status_url')return BASE+'/c/TOKEN';if(k==='referee_authorize_url')return BASE+'/r/TOKEN';if(k in EXR)return EXR[k];s=R(s)||{};if(s.anyOf)return exr(s.anyOf.find(x=>x.type!=='null'),k);if(s.enum)return s.enum[0];
+ switch(s.type){case'object':return Object.fromEntries(Object.entries(s.properties||{}).map(([p,v])=>[p,exr(v,p)]));case'array':return[exr(s.items,k)];case'integer':case'number':return 1;case'boolean':return true;case'string':return s.format==='date-time'?'2026-10-15T09:30:00Z':(k in EX?EX[k]:'string')}return null}
+const HD={'GET /r/{token}':'The page the referee opens from the link they receive. It shows the request and lets them authorize or decline.','POST /r/{token}/authorize':'Form post sent when the referee authorizes. Returns the confirmation page.','POST /r/{token}/decline':'Form post sent when the referee declines. Returns the confirmation page.','GET /c/{token}':'The status page the customer follows from customer_status_url.'};
+const tn=t=>t==='Public'?'Hosted pages':t;
+const HOSTED_INTRO='<p>Fidra serves these pages for people who are not API users. The referee opens <code>referee_authorize_url</code> and the customer follows <code>customer_status_url</code>, both returned when you create a request. Your integration does not call them directly.</p>';
+function flow(sc){const all=(sc.RequestStatus&&sc.RequestStatus.enum)||[],path=['draft','pending_consent','submitted','referee_notified','referee_viewed','authorized','completed'].filter(x=>all.includes(x)),out=all.filter(x=>!path.includes(x));
+ return`<div class="flow">${path.map(x=>`<span class="n ${tone(x)}"><i></i>${x}</span>`).join('')}</div><p style="color:var(--mu);margin:14px 0 4px">A request can also end as:</p><div class="flow x">${out.map(x=>`<span class="n chip ${tone(x)}"><i></i>${x}</span>`).join('')}</div>`}
+
 function op(o){
- const prm=o.parameters||[],rb=o.requestBody&&o.requestBody.content,ct=rb&&Object.keys(rb)[0],bs=rb&&rb[ct].schema,body=bs?ex(bs):null,form=ct&&ct.includes('urlencoded');
- const resp=Object.entries(o.responses||{}),ok=resp.find(([c])=>c[0]==='2'),html=ok&&Object.keys(ok[1].content||{})[0]==='text/html';
+ const all=o.parameters||[],prm=all.filter(x=>x.name!=='X-API-Key'),keyed=all.length!==prm.length,hosted=o.tag==='Public',rb=o.requestBody&&o.requestBody.content,ct=rb&&Object.keys(rb)[0],bs=rb&&rb[ct].schema,body=bs?ex(bs):null,form=ct&&ct.includes('urlencoded');
+ const resp=Object.entries(o.responses||{}).filter(([c])=>c!=='422'),ok=resp.find(([c])=>c[0]==='2'),okct=ok&&Object.keys(ok[1].content||{})[0],html=okct==='text/html';
  const V=o.v.toUpperCase(),u=BASE+o.p,hdr={};
- if(prm.some(x=>x.name==='X-API-Key'))hdr['X-API-Key']='YOUR_API_KEY';if(ct)hdr['Content-Type']=ct;
+ if(keyed)hdr['X-API-Key']='YOUR_API_KEY';if(ct)hdr['Content-Type']=ct;
  const hk=Object.keys(hdr).length,py=x=>JSON.stringify(x).replace(/\btrue\b/g,'True').replace(/\bfalse\b/g,'False').replace(/\bnull\b/g,'None');
  const curl=`curl -X ${V} "${u}"`+Object.entries(hdr).map(([k,v])=>` \\\n  -H "${k}: ${v}"`).join('')+(body?(form?` \\\n  -d "${new URLSearchParams(body)}"`:` \\\n  -d '${JSON.stringify(body,null,2)}'`):'');
  const pyc=`import requests\n\nr = requests.${o.v}(\n    "${u}",`+(hk?`\n    headers=${py(hdr)},`:'')+(body?`\n    ${form?'data':'json'}=${py(body)},`:'')+`\n)\nprint(r.status_code, r.text)`;
  const jsc=`const r = await fetch("${u}", {\n  method: "${V}",`+(hk?`\n  headers: ${JSON.stringify(hdr)},`:'')+(body?`\n  body: ${form?`new URLSearchParams(${JSON.stringify(body)})`:`JSON.stringify(${JSON.stringify(body)})`},`:'')+`\n});\nconsole.log(await r.${html?'text':'json'}());`;
  const rt=r=>{const k=Object.keys(r.content||{})[0];return k?k+' → '+tstr(r.content[k].schema):'—'};
- return`<div class="op" id="${o.operationId}"><div class="oh"><span class="m ${V}">${V}</span><code>${esc(o.p)}</code></div><h3>${esc(o.summary||'')}</h3>
- ${prm.length?'<table><tr><th>Parameter<th>In<th>Type<th><tr>'.slice(0,-4)+prm.map(x=>`<tr><td class=mono>${x.name}<td>${x.in}<td><code>${esc(tstr(x.schema))}</code><td>${x.required?'<span class=req>required</span>':'optional'}`).join('')+'</table>':''}
+ const exm=ok&&okct==='application/json'&&ok[1].content[okct].schema&&Object.keys(ok[1].content[okct].schema).length?`<details open><summary>Example response</summary><pre class="ex">${esc(JSON.stringify(exr(ok[1].content[okct].schema),null,2))}</pre></details>`:'';
+ const left=`<div class="l"><div class="oh"><span class="m ${V}">${V}</span><code>${esc(o.p)}</code>${keyed?'<a class="keyb" href="#auth">API key</a>':''}</div><h3>${esc(o.summary||'')}</h3>${hosted?`<p class="d">${esc(HD[V+' '+o.p]||'')}</p>`:''}
+ ${prm.length?'<table><tr><th>Parameter<th>In<th>Type<th>'+prm.map(x=>`<tr><td class=mono>${x.name}<td>${x.in}<td><code>${esc(tstr(x.schema))}</code><td>${x.required?'<span class=req>required</span>':'optional'}`).join('')+'</table>':''}
  ${bs?`<p style="margin:8px 0 0;color:var(--mu)">Request body · <code>${ct}</code></p>`+props(bs):''}
- <table><tr><th>Response<th>Description<th>Returns${resp.map(([c,r])=>`<tr><td><span class="chip ${c[0]==='2'?'ok':'bad'}">${c}</span><td>${esc(r.description)}<td><code>${esc(rt(r))}</code>`).join('')}</table>
- <div class="code"><div class="tabs"><button class="on" data-l="0">curl</button><button data-l="1">Python</button><button data-l="2">JavaScript</button><button class="cp">Copy</button></div><pre>${esc(curl)}</pre><pre hidden>${esc(pyc)}</pre><pre hidden>${esc(jsc)}</pre></div>
- <details class="try" data-id="${o.operationId}"><summary>Try it</summary>
+ ${hosted?'':`<table><tr><th>Response<th>Returns${resp.map(([c,r])=>`<tr><td><span class="chip ${c[0]==='2'?'ok':'bad'}">${c}</span><td><code>${esc(rt(r))}</code>`).join('')}</table>`+exm}</div>`;
+ const right=hosted?'':`<div class="r"><div class="code"><div class="tabs"><button class="on" data-l="0">curl</button><button data-l="1">Python</button><button data-l="2">JavaScript</button><button class="cp">Copy</button></div><pre>${esc(curl)}</pre><pre hidden>${esc(pyc)}</pre><pre hidden>${esc(jsc)}</pre></div>
+ <details class="try" data-id="${o.operationId}" open><summary>Try it</summary>
  ${prm.filter(x=>x.in==='path').map(x=>`<label>${x.name}<input data-path="${x.name}" placeholder="${x.name}"></label>`).join('')}
- ${body?`<label>Request body (${ct})</label><textarea rows="${Math.min(14,JSON.stringify(body,null,2).split('\n').length+1)}">${esc(JSON.stringify(body,null,2))}</textarea>`:''}
- <button class="send">Send request</button><div class="res"></div></details></div>`}
+ ${body?`<label>Request body (${ct})</label><textarea rows="${Math.min(12,JSON.stringify(body,null,2).split('\n').length+1)}">${esc(JSON.stringify(body,null,2))}</textarea>`:''}
+ <button class="send">Send request</button><div class="res"></div></details></div>`;
+ return`<div class="op${hosted?' hosted':''}" id="${o.operationId}">${left}${right}</div>`}
 
 function render(){
  const sc=spec.components&&spec.components.schemas||{},tags=[...new Set(ops.map(o=>o.tag))];
  $('#ver').textContent='v'+spec.info.version;$('#oj').href=BASE+'/openapi.json';
- $('#nav').innerHTML='<input id="flt" placeholder="Filter endpoints"><h4>Start</h4><a href="#intro">Introduction</a><a href="#auth">Authentication</a><a href="#status">Request statuses</a>'+tags.map(t=>`<h4>${t}</h4>`+ops.filter(o=>o.tag===t).map(o=>`<a class="ep" href="#${o.operationId}"><span class="m ${o.v.toUpperCase()}">${o.v.toUpperCase()}</span>${esc(o.p)}</a>`).join('')).join('')+'<h4>Reference</h4><a href="#schemas">Schemas</a>';
+ $('#nav').innerHTML='<input id="flt" placeholder="Filter endpoints"><h4>Start</h4><a href="#intro">Introduction</a><a href="#auth">Authentication</a><a href="#status">Request statuses</a><a href="#errors">Errors</a>'+tags.map(t=>`<h4>${tn(t)}</h4>`+ops.filter(o=>o.tag===t).map(o=>`<a class="ep" href="#${o.operationId}"><span class="m ${o.v.toUpperCase()}">${o.v.toUpperCase()}</span>${esc(o.p)}</a>`).join('')).join('')+'<h4>Reference</h4><a href="#schemas">Schemas</a>';
  $('#flt').oninput=e=>$$('.ep').forEach(a=>a.hidden=!a.textContent.toLowerCase().includes(e.target.value.toLowerCase()));
  const tag=(spec.info.description||'').split('—').pop().trim()||'The rail that moves trust between institutions.';
  $('#main').innerHTML=`<section id="intro"><div class="ov">Reference exchange API</div><h1>Fidra API</h1><p class="lead">${esc(tag)}</p>
  <label for="base">Base URL</label><input id="base" value="${esc(BASE)}">
  <div class="card"><b>Quickstart</b><ol style="margin:8px 0 0;padding-left:20px"><li><code>POST /v1/institutions</code> with a <code>code</code> and <code>name</code>. Save the returned <code>api_key</code>.</li><li><code>POST /v1/reference-requests</code> with your key in <code>X-API-Key</code>, the customer's name, and the referee's account number and bank code. The response includes <code>referee_authorize_url</code> and <code>customer_status_url</code>.</li><li><code>GET /v1/reference-requests/{public_id}</code> to follow <code>status</code> and <code>history</code> until the request reaches a final status.</li></ol></div></section>
  <section id="auth"><h2>Authentication</h2><p>Send your institution's key in the <code>X-API-Key</code> header on reference-request endpoints. Paste it here to use it in the Try it panels. It stays in this tab only and is never added to the code samples.</p><label for="key">X-API-Key</label><input id="key" type="password" autocomplete="off" value="${esc(KEY)}" placeholder="Paste your API key"></section>
- <section id="status"><h2>Request statuses</h2><p>A reference request moves through these <code>status</code> values:</p>${(sc.RequestStatus&&sc.RequestStatus.enum||[]).map(s=>`<span class="chip ${tone(s)}">${s}</span>`).join('')}</section>
- ${tags.map(t=>`<section id="tag-${t}"><h2>${t}</h2>${ops.filter(o=>o.tag===t).map(op).join('')}</section>`).join('')}
+ <section id="status"><h2>Request statuses</h2><p>A reference request moves through these <code>status</code> values.</p>${flow(sc)}</section>
+ <section id="errors"><h2>Errors</h2><p>Invalid requests return <code>422</code> with a <code>detail</code> array describing each problem. This applies to every endpoint.</p><pre class="ex">{\n  "detail": [\n    { "loc": ["body", "customer_full_name"], "msg": "Field required", "type": "missing" }\n  ]\n}</pre></section>
+ ${tags.map(t=>`<section id="tag-${t}"><h2>${tn(t)}</h2>${t==='Public'?HOSTED_INTRO:''}${ops.filter(o=>o.tag===t).map(op).join('')}</section>`).join('')}
  <section id="schemas"><h2>Schemas</h2>${Object.entries(sc).filter(([n])=>!/ValidationError$/.test(n)).map(([n,s])=>`<details class="sch"><summary class="mono">${n}</summary>${s.enum?s.enum.map(e=>`<span class="chip ${tone(e)}">${e}</span>`).join(''):props(s)}</details>`).join('')}</section>`;
  $('#key').oninput=e=>KEY=e.target.value;
  $('#base').onchange=e=>{BASE=e.target.value.replace(/\/$/,'');render();health()};
