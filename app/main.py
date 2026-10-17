@@ -13,6 +13,9 @@ from app.models.models import Institution
 from app.services.institution_service import create_institution
 from app.api.routes import router as api_router
 from app.api.public import router as public_router
+from app.api.dashboard import router as dashboard_router
+from starlette.middleware.sessions import SessionMiddleware
+import secrets
 
 settings = get_settings()
 
@@ -81,10 +84,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret or secrets.token_urlsafe(32),
+    session_cookie="fidra_session",
+    https_only=settings.session_https_only,
+    same_site="lax",
+    max_age=60 * 60 * 8,
+)
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(api_router, prefix="/v1")
 app.include_router(public_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/", response_class=HTMLResponse)

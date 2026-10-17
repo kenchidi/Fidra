@@ -1,0 +1,21 @@
+{% extends "dash_base.html" %}{% block title %}New request · Fidra{% endblock %}
+{% block body %}
+<h1>New reference request</h1><div class="muted">Fill in the applicant and the referee. It takes about a minute.</div>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+<form method="post" class="card"><input type="hidden" name="csrf" value="{{ csrf }}">
+<h3 class="sec" style="margin-top:0">Applicant</h3>
+<div class="g"><div><label for="n">Full name</label><input id="n" name="customer_full_name" value="{{ form.customer_full_name or '' }}" required></div>
+<div><label for="ph">Phone number</label><input id="ph" name="customer_phone" value="{{ form.customer_phone or '' }}" inputmode="tel"></div>
+<div class="full"><label for="pu">Reason for the reference</label><select id="pu" name="purpose"><option value="account_opening">Opening an account</option><option value="loan_application">Loan application</option><option value="other">Something else</option></select></div></div>
+<h3 class="sec">Referee (the person vouching for the applicant)</h3>
+<div class="g"><div><label for="a">Account number</label><input id="a" name="referee_account_number" value="{{ form.referee_account_number or '' }}" inputmode="numeric" maxlength="10" required></div>
+<div><label for="b">Referee's bank</label><select id="b" name="referee_bank" onchange="bankMsg()"><option value="">Choose a bank</option>
+{% for b in banks %}<option value="{{ b.code }}" data-net="{{ 1 if b.net else 0 }}" {{ 'selected' if form.referee_bank==b.code }}>{{ b.name }}{{ ' (on Fidra)' if b.net }}</option>{% endfor %}
+<option value="__other" {{ 'selected' if form.referee_bank=='__other' }}>Another bank (enter its code)</option></select></div>
+<div class="full" id="oc" style="display:none"><label for="o">Bank code</label><input id="o" name="other_bank_code" value="{{ form.other_bank_code or '' }}" inputmode="numeric" placeholder="3 digits, for example 058"></div></div>
+<div id="msg" class="chip info" style="display:none;margin-top:12px;border-radius:8px;padding:9px 12px"></div>
+<label style="display:flex;gap:9px;align-items:center;margin:20px 0;font-size:14px;color:var(--ink)"><input type="checkbox" name="consent" value="1" style="width:auto"> The customer has agreed to this reference check</label>
+<button class="btn">Send reference request</button></form>
+<script>function bankMsg(){var s=document.getElementById('b'),m=document.getElementById('msg'),o=s.options[s.selectedIndex];document.getElementById('oc').style.display=s.value==='__other'?'block':'none';
+if(!s.value){m.style.display='none';return}m.style.display='block';m.textContent=(o.dataset.net==='1')?'This bank is on Fidra, so the bank will confirm the account itself.':'This bank is not on Fidra yet. The referee will confirm through a link that you share.'}bankMsg();</script>
+{% endblock %}

@@ -104,3 +104,18 @@ class InstitutionPublic(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class StaffCreate(BaseModel):
+    email: str
+    full_name: str
+    role: str = "officer"
+    password: str
+
+
+class StaffOut(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    role: str
+    institution_code: str

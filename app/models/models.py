@@ -96,6 +96,18 @@ class ReferenceRequest(SQLModel, table=True):
     consent_at: Optional[datetime] = None
 
 
+class StaffUser(SQLModel, table=True):
+    """A person at an institution who signs in to the Fidra dashboard."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    institution_id: int = Field(foreign_key="institution.id", index=True)
+    email: str = Field(index=True, unique=True)
+    full_name: str
+    role: str = "officer"  # officer | supervisor | admin
+    password_hash: str
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=utcnow)
+
+
 class StatusEvent(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     request_id: int = Field(foreign_key="referencerequest.id", index=True)

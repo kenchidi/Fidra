@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · Fidra</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap">
+<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#F7F6F2;color:#0A1F3C;font:15px/1.55 Inter,sans-serif}
+.box{width:100%;max-width:380px;background:#fff;border:1px solid #C5CEDA;border-radius:14px;padding:30px;margin:20px}
+.brand{display:flex;align-items:center;gap:10px;font:700 22px Sora;margin-bottom:6px}p{color:#4B5B73;margin:0 0 20px;font-size:14px}
+label{display:block;font-size:13px;color:#4B5B73;margin:14px 0 4px}input{width:100%;padding:11px 12px;border:1px solid #C5CEDA;border-radius:8px;font:15px Inter}input:focus{outline:2px solid #0B7A5F;outline-offset:1px}
+button{width:100%;margin-top:20px;background:#0B7A5F;color:#fff;border:0;border-radius:8px;padding:12px;font:600 15px Sora;cursor:pointer}
+.err{background:#F8DAD7;color:#8E2A24;border-radius:8px;padding:10px 14px;margin-bottom:6px;font-size:14px}a{color:#4B5B73;font-size:13px}</style></head>
+<body><form class="box" method="post" action="/app/login">
+<div class="brand"><svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0A1F3C"/><path d="M22 48V18H44M22 32H36" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><g fill="#2FD3A0"><circle cx="44" cy="18" r="6"/><circle cx="36" cy="32" r="6"/><circle cx="22" cy="48" r="6"/></g></svg>Fidra</div>
+<p>Sign in to request and track references.</p>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<label for="e">Work email</label><input id="e" name="email" type="email" autocomplete="username" required autofocus>
+<label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+<button>Sign in</button><p style="margin:18px 0 0"><a href="/">Back to the Fidra homepage</a></p>
+</form></body></html>

@@ -21,6 +21,10 @@ class Settings(BaseSettings):
 
     token_expire_days: int = 7
 
+    # Staff dashboard sessions. Set SESSION_SECRET in production so logins survive restarts.
+    session_secret: str = ""
+    session_https_only: bool = False   # set true on Render (HTTPS)
+
     # Notifications (stubs for v1)
     sms_enabled: bool = False
     email_enabled: bool = False

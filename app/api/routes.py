@@ -7,6 +7,8 @@ from app.api.deps import get_current_institution, require_admin
 from app.models.models import Institution, ReferenceRequest, RequestStatus
 from app.models.schemas import (
     CreateReferenceRequest,
+    StaffCreate,
+    StaffOut,
     ReferenceRequestOut,
     ReferenceRequestDetail,
     StatusEventOut,
@@ -19,6 +21,8 @@ from app.models.schemas import (
 )
 from app.services import reference_service as svc
 from app.services.institution_service import create_institution as create_institution_record
+from app.core.security import hash_password
+from app.models.models import StaffUser
 
 router = APIRouter()
 
@@ -67,6 +71,31 @@ def create_institution(
         is_active=inst.is_active,
         network_connected=inst.network_connected,
     )
+
+
+@router.post(
+    "/institutions/{code}/staff",
+    response_model=StaffOut,
+    tags=["Institutions"],
+    dependencies=[Depends(require_admin)],
+)
+def create_staff(code: str, body: StaffCreate, session: Session = Depends(get_session)):
+    """Create a dashboard login for an institution's staff. Requires the admin key.
+    Roles: officer, supervisor, admin. The password must be at least 10 characters."""
+    inst = session.exec(select(Institution).where(Institution.code == code)).first()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found")
+    if body.role not in ("officer", "supervisor", "admin"):
+        raise HTTPException(status_code=422, detail="Role must be officer, supervisor or admin")
+    if len(body.password) < 10:
+        raise HTTPException(status_code=422, detail="Password must be at least 10 characters")
+    email = body.email.strip().lower()
+    if session.exec(select(StaffUser).where(StaffUser.email == email)).first():
+        raise HTTPException(status_code=409, detail="A staff account with this email already exists")
+    user = StaffUser(institution_id=inst.id, email=email, full_name=body.full_name.strip(),
+                     role=body.role, password_hash=hash_password(body.password))
+    session.add(user); session.commit(); session.refresh(user)
+    return StaffOut(id=user.id, email=user.email, full_name=user.full_name, role=user.role, institution_code=inst.code)
 
 
 @router.get("/institutions", response_model=List[InstitutionPublic], tags=["Institutions"])

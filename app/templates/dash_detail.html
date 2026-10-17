@@ -1,0 +1,17 @@
+{% extends "dash_base.html" %}{% block title %}{{ r.customer_full_name }} · Fidra{% endblock %}
+{% block body %}
+<p class="muted noprint" style="margin:0 0 4px"><a href="/app/requests">&larr; All requests</a></p>
+<p class="muted" style="margin:0">{{ r.customer_full_name }} · {{ r.purpose|nice }}</p>
+<div class="ban {{ view.tone }}"><div><h2>{{ view.title }}</h2>{% if view.sub %}<p>{{ view.sub }}</p>{% endif %}{% if decline_reason %}<p>Reason given: {{ decline_reason }}</p>{% endif %}<p>Sent {{ r.created_at|wat }} WAT{% if r.completed_at %} · Completed {{ r.completed_at|wat }} WAT{% endif %}</p></div></div>
+{% if share %}<div class="card noprint"><h3 class="sec" style="margin-top:0">Send this link to the referee</h3><p class="muted">Fidra doesn't message the referee yet. Share the link by WhatsApp, SMS or email.</p>
+<div class="copy"><input id="lk" value="{{ share }}" readonly><button class="btn alt" type="button" onclick="copyText('lk',this)">Copy</button><a class="btn" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp</a></div></div>{% endif %}
+<div class="g"><div class="card"><h3 class="sec" style="margin-top:0">What was confirmed</h3>
+{% if items or relation or comment %}{% for label, ok in items %}<div style="padding:5px 0">{{ "✓" if ok else "✗" }} {{ label }}{{ "" if ok else ": no" }}</div>{% endfor %}
+{% if relation %}<div style="padding:5px 0" class="muted">Has known the applicant: {{ relation|replace('_',' ') }}</div>{% endif %}
+{% if comment %}<div style="padding:5px 0" class="muted">Comment: {{ comment }}</div>{% endif %}
+{% else %}<p class="muted">Nothing yet. The answer appears here when the referee responds.</p>{% endif %}</div>
+<div class="card"><h3 class="sec" style="margin-top:0">What happened</h3><div class="tl">{% for h in history %}<div><span>{{ h.label }}</span><span>{{ h.at|wat }}</span></div>{% endfor %}</div></div></div>
+<div class="card"><h3 class="sec" style="margin-top:0">Details</h3><div class="g"><div><div class="muted">Referee account</div><span class="mono">{{ r.referee_account_number }}</span> · bank code <span class="mono">{{ r.referee_bank_code }}</span></div><div><div class="muted">Reference ID</div><span class="mono">{{ r.public_id }}</span></div></div></div>
+<div class="noprint" style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn" href="/app/requests/{{ r.public_id }}?print=1" target="_blank">Print or save as PDF</a><a class="btn alt" href="/app/requests">Back to requests</a></div>
+{% if print %}<script>window.print()</script>{% endif %}
+{% endblock %}

@@ -49,6 +49,19 @@ API keys are stored hashed and shown once, when an institution is created.
 
 ---
 
+## Staff dashboard
+
+Bank staff sign in at `/app/login` to start and track reference checks without touching the API.
+Fidra creates their logins (admin key required):
+
+```bash
+curl -X POST https://YOUR-URL/v1/institutions/mybank/staff \\
+  -H "X-Admin-Key: <admin_key>" -H "Content-Type: application/json" \\
+  -d '{"email": "ngozi@mybank.ng", "full_name": "Ngozi A.", "role": "officer", "password": "a-long-temporary-password"}'
+```
+
+Set `SESSION_SECRET` (any long random string) and `SESSION_HTTPS_ONLY=true` in production.
+
 ## Core API Flow
 
 Create an institution (admin only, the key is returned once):

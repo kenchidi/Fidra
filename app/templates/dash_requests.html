@@ -1,0 +1,9 @@
+{% extends "dash_base.html" %}{% block title %}Requests · Fidra{% endblock %}
+{% block body %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px"><div><h1>Requests</h1><div class="muted">Reference checks your team has started.</div></div><a class="btn" href="/app/requests/new">New request</a></div>
+<form method="get" style="margin:18px 0 0"><input name="q" value="{{ q }}" placeholder="Search by applicant name"></form>
+<div class="card" style="padding:6px 10px">
+{% if rows %}<table><tr><th>Applicant</th><th>Reason</th><th>Status</th><th>Check</th><th>Sent</th></tr>
+{% for r in rows %}<tr class="row" onclick="location.href='/app/requests/{{ r.id }}'"><td><b><a href="/app/requests/{{ r.id }}">{{ r.name }}</a></b></td><td>{{ r.purpose|nice }}</td><td><span class="chip {{ r.tone }}">{{ r.label }}</span></td><td>{{ "Bank-confirmed" if r.bank else "Referee link" }}</td><td class="muted">{{ r.created|wat }}</td></tr>{% endfor %}</table>
+{% else %}<div style="padding:34px;text-align:center"><h3>Start your first reference request</h3><p class="muted">Enter the applicant and the referee, and Fidra does the rest.</p><a class="btn" href="/app/requests/new">New request</a></div>{% endif %}
+</div>{% endblock %}
