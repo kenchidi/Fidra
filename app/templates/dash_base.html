@@ -9,11 +9,11 @@ h1,h2,h3{font-family:Sora,Inter,sans-serif;letter-spacing:-.02em;margin:0}a{colo
 .w{max-width:980px;margin:0 auto;padding:0 20px}
 header{background:var(--ink);color:#fff}header .w{display:flex;align-items:center;gap:22px;height:58px}
 .brand{display:flex;align-items:center;gap:9px;font:700 19px Sora}header nav a{color:#9FB1C7;font-size:14px;margin-right:16px;padding-bottom:4px}header nav a.on{color:#fff;border-bottom:2px solid var(--mint)}
-.sp{flex:1}.who{font-size:13px;color:#9FB1C7}.lnk{background:none;border:0;color:#fff;font:500 13px Inter;cursor:pointer;text-decoration:underline}
+.sp{flex:1}.badge{background:var(--mint);color:var(--ink);border-radius:999px;font:600 11px Inter;padding:1px 7px;margin-left:4px}.who{font-size:13px;color:#9FB1C7}.lnk{background:none;border:0;color:#fff;font:500 13px Inter;cursor:pointer;text-decoration:underline}
 main{padding-top:30px;padding-bottom:60px}h1{font-size:25px;margin-bottom:6px}.muted{color:var(--slate);font-size:14px}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px;margin:16px 0}
 .btn{display:inline-block;background:var(--green);color:#fff;border:0;border-radius:8px;padding:11px 20px;font:600 14px Sora;cursor:pointer}.btn.alt{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
-input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:15px Inter;background:#fff;color:var(--ink)}input:focus,select:focus{outline:2px solid var(--green);outline-offset:1px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:15px Inter;background:#fff;color:var(--ink)}input:focus,select:focus,textarea:focus{outline:2px solid var(--green);outline-offset:1px}
 label{display:block;font-size:13px;color:var(--slate);margin:0 0 4px}.g{display:grid;grid-template-columns:1fr 1fr;gap:14px}.full{grid-column:1/-1}
 h3.sec{font-size:15px;margin:20px 0 10px}.chip{display:inline-block;padding:2px 11px;border-radius:999px;font:500 12.5px Inter}
 .ok{background:#DDF3EB;color:#0B5F4A}.warn{background:#FBEBCB;color:#7A5200}.bad{background:#F8DAD7;color:#8E2A24}.neu{background:var(--cloud);color:var(--slate)}.info{background:#E3EBFD;color:#1F4FB8}
@@ -27,8 +27,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;font
 </style></head><body>
 <header class="noprint"><div class="w">
 <a class="brand" href="/app/requests"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2FD3A0"/><path d="M22 48V18H44M22 32H36" fill="none" stroke="#0A1F3C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><g fill="#0A1F3C"><circle cx="44" cy="18" r="6"/><circle cx="36" cy="32" r="6"/><circle cx="22" cy="48" r="6"/></g></svg>Fidra</a>
-<nav><a href="/app/requests" class="{{ 'on' if tab=='list' }}">Requests</a><a href="/app/requests/new" class="{{ 'on' if tab=='new' }}">New request</a></nav>
-<span class="sp"></span><span class="who">{{ staff.full_name }} · {{ staff.institution }}</span>
+<nav><a href="/app/requests" class="{{ 'on' if tab=='list' }}">Requests</a><a href="/app/requests/new" class="{{ 'on' if tab=='new' }}">New request</a><a href="/app/inbox" class="{{ 'on' if tab=='inbox' }}">Inbox{% if inbox_count %}<span class="badge">{{ inbox_count }}</span>{% endif %}</a>{% if staff.role=='admin' %}<a href="/app/team" class="{{ 'on' if tab=='team' }}">Team</a>{% endif %}</nav>
+<span class="sp"></span><a class="who" href="/app/account" title="Your account">{{ staff.full_name }} · {{ staff.institution }}</a>
 <form method="post" action="/app/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="lnk">Sign out</button></form>
 </div></header>
 <main class="w">{% block body %}{% endblock %}</main>

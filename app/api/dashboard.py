@@ -11,9 +11,9 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlmodel import Session, select
 
 from app.core.database import get_session
-from app.core.security import verify_password
-from app.models.models import Institution, ReferenceRequest, StaffUser
-from app.models.schemas import CreateReferenceRequest
+from app.core.security import hash_password, verify_password
+from app.models.models import Institution, ReferenceRequest, RequestStatus, StaffUser
+from app.models.schemas import BankResponseBody, CreateReferenceRequest
 from app.services import reference_service as svc
 
 router = APIRouter(prefix="/app", include_in_schema=False)
@@ -57,12 +57,18 @@ def current_staff(request: Request, session: Session = Depends(get_session)) -> 
     if not user or not user.is_active:
         request.session.clear()
         raise HTTPException(status_code=303, headers={"Location": "/app/login"})
+    if user.must_change_password and request.url.path not in ("/app/account", "/app/account/password", "/app/logout"):
+        raise HTTPException(status_code=303, headers={"Location": "/app/account"})
     return user
 
 
 def ctx_for(staff: StaffUser, session: Session, tab: str) -> dict:
     inst = session.get(Institution, staff.institution_id)
-    return {"staff": {"full_name": staff.full_name, "role": staff.role, "institution": inst.name}, "tab": tab}
+    return {
+        "staff": {"full_name": staff.full_name, "role": staff.role, "institution": inst.name},
+        "tab": tab,
+        "inbox_count": len(svc.pending_for_bank(session, staff.institution_id)),
+    }
 
 
 def friendly(status) -> tuple:
@@ -86,8 +92,21 @@ EVENT_LABELS = {
 }
 
 
+def event_label(e) -> str:
+    note = e.note or ""
+    if note.startswith("Referee agreed"):
+        return "Referee agreed to the check"
+    if note.endswith("confirmed the account"):
+        return "The referee's bank confirmed the account"
+    if note.startswith("Account not found"):
+        return "The bank couldn't find the account"
+    return EVENT_LABELS.get(e.to_status, e.to_status)
+
+
 def banner(req: ReferenceRequest) -> dict:
     s = getattr(req.status, "value", req.status)
+    if s == "failed" and (req.response_payload or {}).get("account_exists") is False:
+        return {"tone": "bad", "title": "The referee's bank couldn't find that account", "sub": "Check the account number and bank, then start a new request.", "icon": "x"}
     bank = req.assurance_level == "bank_confirmed"
     if s in ("authorized", "completed"):
         if bank:
@@ -220,9 +239,11 @@ def detail(public_id: str, request: Request, print: int = 0, staff: StaffUser = 
     base = str(request.base_url).rstrip("/")
     s = getattr(req.status, "value", req.status)
     events = svc.get_history(session, req.id)
-    history = [{"label": EVENT_LABELS.get(e.to_status, e.to_status), "at": e.created_at} for e in events]
+    history = [{"label": event_label(e), "at": e.created_at} for e in events]
     declined = next((e.note for e in events if e.to_status == "declined" and e.note and e.note != "Declined by referee"), None)
-    waiting = s in ("referee_notified", "referee_viewed", "submitted")
+    waiting = (req.path == "path_a" and s in ("referee_notified", "referee_viewed", "submitted")) or (
+        req.path == "path_b" and s == "pending_bank_confirmation" and not req.referee_consent_at
+    )
     link = f"{base}/r/{req.referee_token}"
     wa = "https://wa.me/?text=" + quote(f"Please confirm a reference for {req.customer_full_name}: {link}")
     payload = req.response_payload or {}
@@ -230,5 +251,168 @@ def detail(public_id: str, request: Request, print: int = 0, staff: StaffUser = 
                 items=confirmed_items(payload, req.assurance_level == "bank_confirmed"),
                 relation=payload.get("relationship_length_band") or payload.get("relationship"),
                 comment=payload.get("additional_comments"), decline_reason=declined,
-                share=(link if (req.path == "path_a" and waiting) else None), wa=wa,
+                share=(link if waiting else None), wa=wa,
+                is_b=req.path == "path_b", agreed=bool(req.referee_consent_at), bank_done=bool(req.bank_answer),
                 customer_link=f"{base}/c/{req.customer_token}", **ctx_for(staff, session, "list"))
+
+
+# ---------------- inbox (staff at the referee's bank)
+def _inbox_req(session: Session, staff: StaffUser, public_id: str) -> ReferenceRequest:
+    req = session.exec(select(ReferenceRequest).where(ReferenceRequest.public_id == public_id)).first()
+    if not req or req.path != "path_b" or req.responding_institution_id != staff.institution_id:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return req
+
+
+@router.get("/inbox", response_class=HTMLResponse)
+def inbox_list(request: Request, done: int = 0, staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
+    rows = []
+    for r in svc.pending_for_bank(session, staff.institution_id):
+        by = session.get(Institution, r.requesting_institution_id)
+        rows.append({"id": r.public_id, "name": r.customer_full_name, "by": by.name if by else "", "account": r.referee_account_number,
+                     "agreed": bool(r.referee_consent_at), "created": r.created_at})
+    return page("dash_inbox.html", request, rows=rows, done=bool(done), **ctx_for(staff, session, "inbox"))
+
+
+def _inbox_page(request, staff, session, req, status_code=200, error=None):
+    by = session.get(Institution, req.requesting_institution_id)
+    return page("dash_inbox_detail.html", request, status_code, r=req, by=by.name if by else "another bank", error=error,
+                closed=req.status != RequestStatus.pending_bank_confirmation, **ctx_for(staff, session, "inbox"))
+
+
+@router.get("/inbox/{public_id}", response_class=HTMLResponse)
+def inbox_detail(public_id: str, request: Request, staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
+    return _inbox_page(request, staff, session, _inbox_req(session, staff, public_id))
+
+
+@router.post("/inbox/{public_id}", response_class=HTMLResponse)
+def inbox_submit(
+    public_id: str, request: Request, decision: str = Form(""), account_active: str = Form("yes"), good_standing: str = Form("yes"),
+    relationship: str = Form(""), comments: str = Form(""), csrf_token: str = Form("", alias="csrf"),
+    staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session),
+):
+    check_csrf(request, csrf_token)
+    req = _inbox_req(session, staff, public_id)
+    if decision not in ("confirm", "not_found"):
+        return _inbox_page(request, staff, session, req, 422, "Choose whether you found the account.")
+    found = decision == "confirm"
+    body = BankResponseBody(account_exists=found, account_active=found and account_active == "yes", good_standing=found and good_standing == "yes",
+                            relationship_length_band=(relationship or None) if found else None, comments=comments.strip() or None)
+    try:
+        svc.submit_bank_response(session, req, session.get(Institution, staff.institution_id), body)
+    except HTTPException as e:
+        return _inbox_page(request, staff, session, req, 400, e.detail)
+    return RedirectResponse("/app/inbox?done=1", status_code=303)
+
+
+# ---------------- own account: change password
+@router.get("/account", response_class=HTMLResponse)
+def account(request: Request, staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
+    return page("dash_account.html", request, error=None, ok=None, me=staff, **ctx_for(staff, session, "account"))
+
+
+@router.post("/account/password", response_class=HTMLResponse)
+def change_password(
+    request: Request, current_password: str = Form(""), new_password: str = Form(""), confirm_password: str = Form(""),
+    csrf_token: str = Form("", alias="csrf"), staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session),
+):
+    check_csrf(request, csrf_token)
+    key, now = f"pw|{staff.id}", time.time()
+    recent = [t for t in _FAILS.get(key, []) if now - t < 600]
+    error = ok = None
+    if len(recent) >= 5:
+        error = "Too many attempts. Try again in 10 minutes."
+    elif not verify_password(current_password, staff.password_hash):
+        _FAILS[key] = recent + [now]
+        error = "Your current password isn't right."
+    elif len(new_password) < 10:
+        error = "Your new password needs at least 10 characters."
+    elif new_password != confirm_password:
+        error = "The two new passwords don't match."
+    elif new_password == current_password:
+        error = "Choose a password you haven't used here before."
+    else:
+        staff.password_hash = hash_password(new_password)
+        staff.must_change_password = False
+        session.add(staff)
+        session.commit()
+        _FAILS.pop(key, None)
+        ok = "Your password has been changed."
+    return page("dash_account.html", request, 422 if error else 200, error=error, ok=ok, me=staff, **ctx_for(staff, session, "account"))
+
+
+# ---------------- team (administrators only)
+def admin_required(staff: StaffUser = Depends(current_staff)) -> StaffUser:
+    if staff.role != "admin":
+        raise HTTPException(status_code=403, detail="Only administrators can manage the team.")
+    return staff
+
+
+def _team_page(request, staff, session, error=None, ok=None, status_code=200):
+    members = session.exec(select(StaffUser).where(StaffUser.institution_id == staff.institution_id).order_by(StaffUser.full_name)).all()
+    return page("dash_team.html", request, status_code, members=members, me=staff.id, error=error, ok=ok, **ctx_for(staff, session, "team"))
+
+
+def _member(session: Session, staff: StaffUser, uid: int) -> StaffUser:
+    m = session.get(StaffUser, uid)
+    if not m or m.institution_id != staff.institution_id:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    return m
+
+
+@router.get("/team", response_class=HTMLResponse)
+def team(request: Request, staff: StaffUser = Depends(admin_required), session: Session = Depends(get_session)):
+    return _team_page(request, staff, session)
+
+
+@router.post("/team/add", response_class=HTMLResponse)
+def team_add(
+    request: Request, email: str = Form(""), full_name: str = Form(""), role: str = Form("officer"), password: str = Form(""),
+    csrf_token: str = Form("", alias="csrf"), staff: StaffUser = Depends(admin_required), session: Session = Depends(get_session),
+):
+    check_csrf(request, csrf_token)
+    email = email.strip().lower()
+    if "@" not in email or not full_name.strip():
+        return _team_page(request, staff, session, error="Enter a name and a valid email.", status_code=422)
+    if role not in ("officer", "supervisor", "admin"):
+        return _team_page(request, staff, session, error="Choose a role.", status_code=422)
+    if len(password) < 10:
+        return _team_page(request, staff, session, error="The temporary password needs at least 10 characters.", status_code=422)
+    if session.exec(select(StaffUser).where(StaffUser.email == email)).first():
+        return _team_page(request, staff, session, error="Someone already has an account with that email.", status_code=409)
+    session.add(StaffUser(institution_id=staff.institution_id, email=email, full_name=full_name.strip(), role=role,
+                          password_hash=hash_password(password), must_change_password=True))
+    session.commit()
+    return _team_page(request, staff, session, ok=f"{full_name.strip()} can now sign in. They will be asked to choose their own password.")
+
+
+@router.post("/team/{uid}/toggle", response_class=HTMLResponse)
+def team_toggle(uid: int, request: Request, csrf_token: str = Form("", alias="csrf"),
+                staff: StaffUser = Depends(admin_required), session: Session = Depends(get_session)):
+    check_csrf(request, csrf_token)
+    m = _member(session, staff, uid)
+    if m.id == staff.id:
+        return _team_page(request, staff, session, error="You can't switch off your own account.", status_code=400)
+    if m.is_active and m.role == "admin":
+        others = session.exec(select(StaffUser).where(StaffUser.institution_id == staff.institution_id, StaffUser.role == "admin",
+                                                      StaffUser.is_active == True, StaffUser.id != m.id)).all()  # noqa: E712
+        if not others:
+            return _team_page(request, staff, session, error="Keep at least one active administrator.", status_code=400)
+    m.is_active = not m.is_active
+    session.add(m)
+    session.commit()
+    return _team_page(request, staff, session, ok=f"{m.full_name} is now {'active' if m.is_active else 'switched off'}.")
+
+
+@router.post("/team/{uid}/password", response_class=HTMLResponse)
+def team_reset(uid: int, request: Request, password: str = Form(""), csrf_token: str = Form("", alias="csrf"),
+               staff: StaffUser = Depends(admin_required), session: Session = Depends(get_session)):
+    check_csrf(request, csrf_token)
+    m = _member(session, staff, uid)
+    if len(password) < 10:
+        return _team_page(request, staff, session, error="The temporary password needs at least 10 characters.", status_code=422)
+    m.password_hash = hash_password(password)
+    m.must_change_password = True
+    session.add(m)
+    session.commit()
+    return _team_page(request, staff, session, ok=f"New temporary password set for {m.full_name}. They must change it when they sign in.")

@@ -1,0 +1,16 @@
+{% extends "dash_base.html" %}{% block title %}Team · Fidra{% endblock %}
+{% block body %}
+<h1>Team</h1><div class="muted">People at {{ staff.institution }} who can sign in to Fidra.</div>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}{% if ok %}<div class="ban ok" style="padding:12px 16px"><b>{{ ok }}</b></div>{% endif %}
+<div class="card" style="padding:6px 10px"><table><tr><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+{% for m in members %}<tr><td><b>{{ m.full_name }}</b><div class="muted">{{ m.email }}</div></td><td>{{ m.role|capitalize }}</td>
+<td><span class="chip {{ 'ok' if m.is_active else 'neu' }}">{{ 'Active' if m.is_active else 'Switched off' }}</span>{% if m.must_change_password %} <span class="chip warn">Must set password</span>{% endif %}</td>
+<td><div style="display:flex;gap:6px;flex-wrap:wrap">
+<form method="post" action="/app/team/{{ m.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn alt" style="padding:6px 12px;font-size:13px" {{ 'disabled' if m.id==me }}>{{ 'Switch off' if m.is_active else 'Switch on' }}</button></form>
+<form method="post" action="/app/team/{{ m.id }}/password" style="display:flex;gap:6px"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="password" name="password" placeholder="New temporary password" style="width:190px;padding:6px 10px;font-size:13px" autocomplete="new-password"><button class="btn alt" style="padding:6px 12px;font-size:13px">Reset</button></form></div></td></tr>{% endfor %}</table></div>
+<form method="post" action="/app/team/add" class="card"><input type="hidden" name="csrf" value="{{ csrf }}"><h3 class="sec" style="margin-top:0">Add a person</h3>
+<div class="g"><div><label>Full name</label><input name="full_name" required></div><div><label>Work email</label><input name="email" type="email" required></div>
+<div><label>Role</label><select name="role"><option value="officer">Officer: starts and tracks requests</option><option value="supervisor">Supervisor</option><option value="admin">Administrator: manages the team</option></select></div>
+<div><label>Temporary password (at least 10 characters)</label><input name="password" type="password" autocomplete="new-password" required></div></div>
+<p class="muted">They will be asked to choose their own password the first time they sign in. Share the temporary one privately.</p><button class="btn">Add person</button></form>
+{% endblock %}

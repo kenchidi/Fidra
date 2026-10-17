@@ -8,6 +8,9 @@ from app.models.models import Institution, ReferenceRequest, RequestStatus
 from app.models.schemas import (
     CreateReferenceRequest,
     StaffCreate,
+    BankResponseBody,
+    BankResponseResult,
+    InboxItem,
     StaffOut,
     ReferenceRequestOut,
     ReferenceRequestDetail,
@@ -93,7 +96,7 @@ def create_staff(code: str, body: StaffCreate, session: Session = Depends(get_se
     if session.exec(select(StaffUser).where(StaffUser.email == email)).first():
         raise HTTPException(status_code=409, detail="A staff account with this email already exists")
     user = StaffUser(institution_id=inst.id, email=email, full_name=body.full_name.strip(),
-                     role=body.role, password_hash=hash_password(body.password))
+                     role=body.role, password_hash=hash_password(body.password), must_change_password=True)
     session.add(user); session.commit(); session.refresh(user)
     return StaffOut(id=user.id, email=user.email, full_name=user.full_name, role=user.role, institution_code=inst.code)
 
@@ -203,3 +206,34 @@ def list_references(
             **urls,
         ))
     return results
+
+
+@router.get("/inbox", response_model=List[InboxItem], tags=["Bank responses"])
+def inbox(
+    institution: Institution = Depends(get_current_institution),
+    session: Session = Depends(get_session),
+):
+    """Path B requests waiting for your bank to confirm an account."""
+    out = []
+    for r in svc.pending_for_bank(session, institution.id):
+        requester = session.get(Institution, r.requesting_institution_id)
+        out.append(InboxItem(
+            public_id=r.public_id, customer_full_name=r.customer_full_name,
+            referee_account_number=r.referee_account_number, purpose=r.purpose,
+            requesting_institution=requester.name if requester else "",
+            referee_agreed=bool(r.referee_consent_at), created_at=r.created_at, expires_at=r.expires_at,
+        ))
+    return out
+
+
+@router.post("/reference-requests/{public_id}/bank-response", response_model=BankResponseResult, tags=["Bank responses"])
+def bank_response(
+    public_id: str,
+    body: BankResponseBody,
+    institution: Institution = Depends(get_current_institution),
+    session: Session = Depends(get_session),
+):
+    """Answer a Path B request as the referee's bank. Only the responding bank can call this."""
+    req = svc.get_request_by_public_id(session, public_id)
+    req = svc.submit_bank_response(session, req, institution, body)
+    return BankResponseResult(public_id=req.public_id, status=req.status, assurance_level=req.assurance_level)

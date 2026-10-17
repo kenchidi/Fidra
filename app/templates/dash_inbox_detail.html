@@ -1,0 +1,23 @@
+{% extends "dash_base.html" %}{% block title %}Confirm an account · Fidra{% endblock %}
+{% block body %}
+<p class="muted" style="margin:0 0 4px"><a href="/app/inbox">&larr; Inbox</a></p>
+<h1>Confirm an account</h1><div class="muted">{{ by }} asked about a customer of yours.</div>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+<div class="card"><div class="g"><div><div class="muted">Referee's account number</div><div class="mono" style="font-size:20px">{{ r.referee_account_number }}</div></div>
+<div><div class="muted">The referee is vouching for</div><b>{{ r.customer_full_name }}</b> · {{ r.purpose|nice }}</div></div>
+<p class="muted" style="margin:14px 0 0">The referee has {{ "agreed to this check." if r.referee_consent_at else "not agreed yet. Your answer is saved and the reference completes when they do." }}</p></div>
+{% if closed %}<div class="card"><b>This request has already been answered or has closed.</b></div>
+{% else %}
+<form method="post" class="card"><input type="hidden" name="csrf" value="{{ csrf }}">
+<p style="margin-top:0">Look this account up in your own system, then answer below. Only your answers are shared, not the account's details.</p>
+<h3 class="sec">Did you find the account?</h3>
+<label style="display:flex;gap:8px;color:var(--ink)"><input type="radio" name="decision" value="confirm" style="width:auto" onchange="sh()"> Yes, I found it</label>
+<label style="display:flex;gap:8px;color:var(--ink)"><input type="radio" name="decision" value="not_found" style="width:auto" onchange="sh()"> No, I can't find this account</label>
+<div id="more" style="display:none">
+<div class="g" style="margin-top:14px"><div><label>Is the account active?</label><select name="account_active"><option value="yes">Yes</option><option value="no">No</option></select></div>
+<div><label>Is the holder in good standing?</label><select name="good_standing"><option value="yes">Yes</option><option value="no">No</option></select></div>
+<div class="full"><label>How long has the account been open?</label><select name="relationship"><option value="">Not sure</option><option value="under_1_year">Under 1 year</option><option value="1-3_years">1 to 3 years</option><option value="3-5_years">3 to 5 years</option><option value="over_5_years">Over 5 years</option></select></div></div></div>
+<label style="margin-top:14px">Comment (optional)</label><textarea name="comments" rows="2"></textarea>
+<div style="margin-top:18px"><button class="btn">Send answer</button></div></form>
+<script>function sh(){document.getElementById('more').style.display=document.querySelector('input[name=decision]:checked').value==='confirm'?'block':'none'}</script>
+{% endif %}{% endblock %}

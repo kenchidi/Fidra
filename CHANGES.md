@@ -14,6 +14,9 @@ Replace the files listed below in your repo (same paths), then set the environme
 - app/services/institution_service.py   NEW: creates an institution and returns its key once
 - app/services/mock_bank.py  mock responses marked "simulated": true
 - app/services/reference_service.py     self-attested responses carry "account_verified": false
+- app/api/routes.py (also: GET /v1/inbox, POST /v1/reference-requests/{id}/bank-response)
+- app/templates/dash_inbox.html, dash_inbox_detail.html, dash_account.html, dash_team.html   NEW
+- app/services/mock_bank.py  DELETE this file from your repo (no longer used)
 - app/templates/home.html   NEW homepage: Path A / Path B, in-browser example, assurance levels, Sign in link
 - app/api/dashboard.py      NEW staff dashboard: login, requests list, new request, request detail/result, print view
 - app/core/security.py      NEW password hashing
@@ -41,6 +44,14 @@ a result screen in plain language, a link to share with the referee (WhatsApp or
 Not yet included: staff management screen, password change or reset, different permissions per role
 (roles are stored, but every signed-in person sees their institution's requests), the referee bank's
 "checks waiting for you" inbox for Path B, automatic SMS or email to the referee.
+
+## Update: Path B inbox, password change, team (new)
+- Path B is now real. The referee's bank answers from Inbox (or the API), and the referee agrees through the link. The request completes when BOTH have answered. The simulated bank is gone.
+- New staff logins (created by Fidra or by a bank admin) must choose their own password on first sign-in. Everyone can change theirs under their name at the top right.
+- Admins get a Team page: add people, switch them off or on, set a new temporary password.
+- Changed table: referencerequest has three new columns and staffuser has one. Start from a fresh database (Render's free plan resets on redeploy anyway).
+- Known leftover: the referee page still asks the referee about good standing. In Path B that answer is ignored, because the bank decides.
+- Still not built: automatic SMS/email to the referee, a real-time bank integration beyond the API endpoints, different permissions for officers and supervisors, per-staff request history.
 
 ## Important
 - The institution table changed (api_key -> api_key_hash). Existing databases are not migrated. Start from a fresh database, then recreate institutions through the admin endpoint.

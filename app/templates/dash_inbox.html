@@ -1,0 +1,9 @@
+{% extends "dash_base.html" %}{% block title %}Inbox · Fidra{% endblock %}
+{% block body %}
+<h1>Inbox</h1><div class="muted">Other banks are asking you to confirm an account held at your bank.</div>
+{% if done %}<div class="ban ok" style="padding:12px 16px"><b>Thank you. Your answer has been sent.</b></div>{% endif %}
+<div class="card" style="padding:6px 10px">
+{% if rows %}<table><tr><th>About</th><th>Asked by</th><th>Referee account</th><th>Referee agreed</th><th>Received</th></tr>
+{% for r in rows %}<tr class="row" onclick="location.href='/app/inbox/{{ r.id }}'"><td><b><a href="/app/inbox/{{ r.id }}">{{ r.name }}</a></b></td><td>{{ r.by }}</td><td class="mono">{{ r.account }}</td><td><span class="chip {{ 'ok' if r.agreed else 'warn' }}">{{ 'Yes' if r.agreed else 'Not yet' }}</span></td><td class="muted">{{ r.created|wat }}</td></tr>{% endfor %}</table>
+{% else %}<div style="padding:34px;text-align:center"><h3>Nothing is waiting for you</h3><p class="muted">When another bank asks about an account at your bank, it appears here.</p></div>{% endif %}
+</div>{% endblock %}

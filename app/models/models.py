@@ -95,6 +95,11 @@ class ReferenceRequest(SQLModel, table=True):
     consent_given: bool = False
     consent_at: Optional[datetime] = None
 
+    # Path B: the request completes only when both the referee and the bank have answered
+    referee_consent_at: Optional[datetime] = None
+    referee_answer: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    bank_answer: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+
 
 class StaffUser(SQLModel, table=True):
     """A person at an institution who signs in to the Fidra dashboard."""
@@ -105,6 +110,7 @@ class StaffUser(SQLModel, table=True):
     role: str = "officer"  # officer | supervisor | admin
     password_hash: str
     is_active: bool = True
+    must_change_password: bool = False  # true for logins created by an admin with a temporary password
     created_at: datetime = Field(default_factory=utcnow)
 
 

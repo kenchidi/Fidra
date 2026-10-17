@@ -119,3 +119,30 @@ class StaffOut(BaseModel):
     full_name: str
     role: str
     institution_code: str
+
+
+class BankResponseBody(BaseModel):
+    """The referee's bank answers a Path B request."""
+    account_exists: bool
+    account_active: bool = True
+    name_match: Optional[bool] = None
+    good_standing: bool = True
+    relationship_length_band: Optional[str] = None
+    comments: Optional[str] = None
+
+
+class BankResponseResult(BaseModel):
+    public_id: str
+    status: RequestStatus
+    assurance_level: str
+
+
+class InboxItem(BaseModel):
+    public_id: str
+    customer_full_name: str
+    referee_account_number: str
+    purpose: str
+    requesting_institution: str
+    referee_agreed: bool
+    created_at: datetime
+    expires_at: Optional[datetime] = None

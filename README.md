@@ -60,6 +60,14 @@ curl -X POST https://YOUR-URL/v1/institutions/mybank/staff \\
   -d '{"email": "ngozi@mybank.ng", "full_name": "Ngozi A.", "role": "officer", "password": "a-long-temporary-password"}'
 ```
 
+People created this way must choose their own password the first time they sign in. Staff with the
+`admin` role can then add and switch off colleagues on the Team page.
+
+**Inbox (Path B).** When a request names a bank that is `network_connected`, staff at that bank see it
+under Inbox and answer from their own records. Banks with developers can use `GET /v1/inbox` and
+`POST /v1/reference-requests/{public_id}/bank-response` instead. A Path B request completes when the
+bank has answered and the referee has agreed.
+
 Set `SESSION_SECRET` (any long random string) and `SESSION_HTTPS_ONLY=true` in production.
 
 ## Core API Flow

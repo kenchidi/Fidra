@@ -8,7 +8,6 @@ from app.models.models import (
 )
 from app.models.schemas import CreateReferenceRequest, ResponsePayload
 from app.core.config import get_settings
-from app.services import mock_bank
 
 settings = get_settings()
 
@@ -84,30 +83,11 @@ def create_reference_request(
     session.commit()
 
     if use_path_b and responding:
-        # Path B: mock bank verifies account, then await consent/confirmation
-        check = mock_bank.verify_account(
-            responding, data.referee_account_number, data.referee_account_name
-        )
-        if not check.get("account_exists"):
-            req.response_payload = {
-                **check,
-                "assurance_level": "bank_confirmed",
-                "responded_by": responding.code,
-            }
-            req.completed_at = utcnow()
-            _log_status(
-                session, req, RequestStatus.failed,
-                actor="bank",
-                note=f"Account not found at {responding.name}",
-            )
-            session.commit()
-            session.refresh(req)
-            return req
-
+        # Path B: the referee's bank answers from its inbox (or through the API)
         _log_status(
             session, req, RequestStatus.pending_bank_confirmation,
             actor="system",
-            note=f"Account verified at {responding.name}; awaiting referee consent",
+            note=f"Waiting for {responding.name} to confirm the account",
         )
         session.commit()
         session.refresh(req)
@@ -183,20 +163,19 @@ def authorize_request(
         responding = session.get(Institution, req.responding_institution_id)
 
     if req.path == "path_b" and responding:
-        # Path B: response is bank-confirmed via mock connector
-        check = mock_bank.verify_account(
-            responding, req.referee_account_number, req.referee_account_name
-        )
-        req.response_payload = mock_bank.build_bank_reference_response(
-            responding,
-            check,
-            good_standing=payload.good_standing,
-            relationship_length_band=payload.relationship_length_band or "3-5_years",
-            comments=payload.additional_comments,
-        )
-        req.assurance_level = AssuranceLevel.bank_confirmed.value
-        actor = "bank"
-        note = f"Confirmed by {responding.name}"
+        # Path B: the referee only agrees to share. The bank supplies the confirmation.
+        if req.referee_consent_at:
+            return req
+        req.referee_consent_at = utcnow()
+        req.referee_answer = {
+            "relationship_length_band": payload.relationship_length_band,
+            "additional_comments": payload.additional_comments,
+        }
+        _log_status(session, req, req.status, actor="referee", note="Referee agreed to share")
+        _maybe_complete_path_b(session, req, responding)
+        session.commit()
+        session.refresh(req)
+        return req
     else:
         # Path A: self-attested by referee
         data = payload.model_dump()
@@ -241,3 +220,80 @@ def get_history(session: Session, request_id: int):
         .where(StatusEvent.request_id == request_id)
         .order_by(StatusEvent.created_at.asc())
     ).all()
+
+
+def _maybe_complete_path_b(session: Session, req: ReferenceRequest, responding: Optional[Institution]):
+    """A Path B request completes once the bank has answered AND the referee has agreed."""
+    if not (req.bank_answer and req.referee_consent_at):
+        return
+    bank = req.bank_answer
+    ref = req.referee_answer or {}
+    name = responding.name if responding else "the bank"
+    req.response_payload = {
+        "account_exists": True,
+        "account_active": bank.get("account_active"),
+        "account_name_match": bank.get("name_match"),
+        "good_standing": bank.get("good_standing"),
+        "relationship_length_band": bank.get("relationship_length_band") or ref.get("relationship_length_band"),
+        "additional_comments": ref.get("additional_comments"),
+        "bank_comments": bank.get("comments"),
+        "referee_agreed": True,
+        "responded_by": responding.code if responding else None,
+        "responded_by_name": name,
+        "assurance_level": AssuranceLevel.bank_confirmed.value,
+        "confirmation_type": "bank_confirmed",
+    }
+    req.assurance_level = AssuranceLevel.bank_confirmed.value
+    req.completed_at = utcnow()
+    _log_status(session, req, RequestStatus.authorized, actor="bank", note=f"Confirmed by {name}")
+    _log_status(session, req, RequestStatus.completed, actor="system", note="Reference completed")
+
+
+def submit_bank_response(session: Session, req: ReferenceRequest, institution: Institution, body):
+    """The referee's bank answers a Path B request. Used by the dashboard inbox and the API."""
+    if req.path != "path_b" or req.responding_institution_id != institution.id:
+        raise HTTPException(status_code=404, detail="Reference request not found")
+    if req.status != RequestStatus.pending_bank_confirmation:
+        raise HTTPException(status_code=400, detail=f"This request is no longer waiting for the bank (status: {req.status.value})")
+    if req.expires_at and req.expires_at < utcnow():
+        raise HTTPException(status_code=400, detail="This request has expired")
+
+    if not body.account_exists:
+        req.response_payload = {
+            "account_exists": False,
+            "account_active": False,
+            "responded_by": institution.code,
+            "responded_by_name": institution.name,
+            "assurance_level": AssuranceLevel.bank_confirmed.value,
+            "confirmation_type": "bank_confirmed",
+        }
+        req.completed_at = utcnow()
+        _log_status(session, req, RequestStatus.failed, actor="bank", note=f"Account not found at {institution.name}")
+    else:
+        req.bank_answer = {
+            "account_active": body.account_active,
+            "name_match": body.name_match,
+            "good_standing": body.good_standing,
+            "relationship_length_band": body.relationship_length_band,
+            "comments": body.comments,
+        }
+        _log_status(session, req, req.status, actor="bank", note=f"{institution.name} confirmed the account")
+        _maybe_complete_path_b(session, req, institution)
+    session.commit()
+    session.refresh(req)
+    return req
+
+
+def pending_for_bank(session: Session, institution_id: int):
+    """Path B requests waiting for this bank, newest first, excluding expired ones."""
+    rows = session.exec(
+        select(ReferenceRequest)
+        .where(
+            ReferenceRequest.responding_institution_id == institution_id,
+            ReferenceRequest.path == "path_b",
+            ReferenceRequest.status == RequestStatus.pending_bank_confirmation,
+        )
+        .order_by(ReferenceRequest.created_at.desc())
+    ).all()
+    now = utcnow()
+    return [r for r in rows if not (r.expires_at and r.expires_at < now)]
