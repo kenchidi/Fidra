@@ -7,11 +7,18 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
 
-    # Database
+    # Database. Use Postgres in production (DATABASE_URL); SQLite is for local dev only.
     database_url: str = "sqlite:///./fidra.db"
 
-    # Security
-    secret_key: str = "change-me-in-production-fidra-dev-secret-key-2026"
+    # Admin key required to create institutions. Leave empty to disable that endpoint.
+    admin_api_key: str = ""
+
+    # Seeds demo institutions and prints their keys at startup. Local development only.
+    seed_demo_data: bool = False
+
+    # Comma-separated list of allowed browser origins, e.g. "https://app.example.com".
+    cors_origins: str = "*"
+
     token_expire_days: int = 7
 
     # Notifications (stubs for v1)

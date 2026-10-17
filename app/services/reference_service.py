@@ -202,6 +202,7 @@ def authorize_request(
         data = payload.model_dump()
         data["assurance_level"] = AssuranceLevel.self_attested.value
         data["confirmation_type"] = "self_attested"
+        data["account_verified"] = False
         data["responded_by"] = "referee_self"
         req.response_payload = data
         req.assurance_level = AssuranceLevel.self_attested.value

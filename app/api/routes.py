@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
 from typing import List
 
 from app.core.database import get_session
-from app.api.deps import get_current_institution
+from app.api.deps import get_current_institution, require_admin
 from app.models.models import Institution, ReferenceRequest, RequestStatus
 from app.models.schemas import (
     CreateReferenceRequest,
@@ -18,6 +18,7 @@ from app.models.schemas import (
     ResponsePayload,
 )
 from app.services import reference_service as svc
+from app.services.institution_service import create_institution as create_institution_record
 
 router = APIRouter()
 
@@ -31,20 +32,41 @@ def _build_urls(req: ReferenceRequest, base: str) -> dict:
 
 # ---------- Institutions (bootstrap) ----------
 
-@router.post("/institutions", response_model=InstitutionOut, tags=["Institutions"])
+@router.post(
+    "/institutions",
+    response_model=InstitutionOut,
+    tags=["Institutions"],
+    dependencies=[Depends(require_admin)],
+)
 def create_institution(
     body: InstitutionCreate,
     session: Session = Depends(get_session),
 ):
-    existing = session.exec(select(Institution).where(Institution.code == body.code)).first()
-    if existing:
-        return existing
+    """Register an institution. Requires the admin key (X-Admin-Key).
+    The API key is returned once, in this response, and cannot be retrieved later."""
+    if session.exec(select(Institution).where(Institution.code == body.code)).first():
+        raise HTTPException(status_code=409, detail="An institution with this code already exists")
+    if body.bank_code and session.exec(
+        select(Institution).where(Institution.bank_code == body.bank_code, Institution.is_active == True)
+    ).first():
+        raise HTTPException(status_code=409, detail="An active institution already uses this bank code")
 
-    inst = Institution(code=body.code, name=body.name, bank_code=body.bank_code, network_connected=getattr(body, 'network_connected', False))
-    session.add(inst)
-    session.commit()
-    session.refresh(inst)
-    return inst
+    inst, plain_key = create_institution_record(
+        session,
+        code=body.code,
+        name=body.name,
+        bank_code=body.bank_code,
+        network_connected=body.network_connected,
+    )
+    return InstitutionOut(
+        id=inst.id,
+        code=inst.code,
+        name=inst.name,
+        bank_code=inst.bank_code,
+        api_key=plain_key,
+        is_active=inst.is_active,
+        network_connected=inst.network_connected,
+    )
 
 
 @router.get("/institutions", response_model=List[InstitutionPublic], tags=["Institutions"])
@@ -95,7 +117,10 @@ def get_reference(
     session: Session = Depends(get_session),
 ):
     req = svc.get_request_by_public_id(session, public_id)
-    # Optional: enforce that only the requesting institution can see it
+    # Only the requesting or the responding institution may see a request.
+    # Return 404 (not 403) so request IDs cannot be probed.
+    if institution.id not in (req.requesting_institution_id, req.responding_institution_id):
+        raise HTTPException(status_code=404, detail="Reference request not found")
     history = svc.get_history(session, req.id)
     base = str(request.base_url).rstrip("/")
     urls = _build_urls(req, base)

@@ -99,14 +99,16 @@ function exr(s,k){if(k==='customer_status_url')return BASE+'/c/TOKEN';if(k==='re
 const HD={'GET /r/{token}':'The page the referee opens from the link they receive. It shows the request and lets them authorize or decline.','POST /r/{token}/authorize':'Form post sent when the referee authorizes. Returns the confirmation page.','POST /r/{token}/decline':'Form post sent when the referee declines. Returns the confirmation page.','GET /c/{token}':'The status page the customer follows from customer_status_url.'};
 const tn=t=>t==='Public'?'Hosted pages':t;
 const HOSTED_INTRO='<p>Fidra serves these pages for people who are not API users. The referee opens <code>referee_authorize_url</code> and the customer follows <code>customer_status_url</code>, both returned when you create a request. Your integration does not call them directly.</p>';
-function flow(sc){const all=(sc.RequestStatus&&sc.RequestStatus.enum)||[],path=['draft','pending_consent','submitted','referee_notified','referee_viewed','authorized','completed'].filter(x=>all.includes(x)),out=all.filter(x=>!path.includes(x));
- return`<div class="flow">${path.map(x=>`<span class="n ${tone(x)}"><i></i>${x}</span>`).join('')}</div><p style="color:var(--mu);margin:14px 0 4px">A request can also end as:</p><div class="flow x">${out.map(x=>`<span class="n chip ${tone(x)}"><i></i>${x}</span>`).join('')}</div>`}
+function flow(sc){const all=(sc.RequestStatus&&sc.RequestStatus.enum)||[],has=x=>all.includes(x),
+ A=['submitted','referee_notified','referee_viewed','authorized','completed'].filter(has),B=['submitted','pending_bank_confirmation','authorized','completed'].filter(has),
+ used=new Set([...A,...B,'draft','pending_consent']),out=all.filter(x=>!used.has(x)),row=l=>`<div class="flow">${l.map(x=>`<span class="n ${tone(x)}"><i></i>${x}</span>`).join('')}</div>`;
+ return`<p style="margin:14px 0 4px"><b>Path A</b> · the referee confirms through a link (self-attested)</p>${row(A)}<p style="margin:14px 0 4px"><b>Path B</b> · the referee's bank is on the network and confirms the account</p>${row(B)}<p style="color:var(--mu);margin:14px 0 4px">Either path can also end as:</p><div class="flow x">${out.map(x=>`<span class="n chip ${tone(x)}"><i></i>${x}</span>`).join('')}</div>`}
 
 function op(o){
- const all=o.parameters||[],prm=all.filter(x=>x.name!=='X-API-Key'),keyed=all.length!==prm.length,hosted=o.tag==='Public',rb=o.requestBody&&o.requestBody.content,ct=rb&&Object.keys(rb)[0],bs=rb&&rb[ct].schema,body=bs?ex(bs):null,form=ct&&ct.includes('urlencoded');
+ const all=o.parameters||[],prm=all.filter(x=>x.name!=='X-API-Key'),hdrs=prm.filter(x=>x.in==='header'),keyed=all.length!==prm.length,hosted=o.tag==='Public',rb=o.requestBody&&o.requestBody.content,ct=rb&&Object.keys(rb)[0],bs=rb&&rb[ct].schema,body=bs?ex(bs):null,form=ct&&ct.includes('urlencoded');
  const resp=Object.entries(o.responses||{}).filter(([c])=>c!=='422'),ok=resp.find(([c])=>c[0]==='2'),okct=ok&&Object.keys(ok[1].content||{})[0],html=okct==='text/html';
  const V=o.v.toUpperCase(),u=BASE+o.p,hdr={};
- if(keyed)hdr['X-API-Key']='YOUR_API_KEY';if(ct)hdr['Content-Type']=ct;
+ if(keyed)hdr['X-API-Key']='YOUR_API_KEY';hdrs.forEach(x=>hdr[x.name]='YOUR_'+x.name.toUpperCase().replace(/-/g,'_'));if(ct)hdr['Content-Type']=ct;
  const hk=Object.keys(hdr).length,py=x=>JSON.stringify(x).replace(/\btrue\b/g,'True').replace(/\bfalse\b/g,'False').replace(/\bnull\b/g,'None');
  const curl=`curl -X ${V} "${u}"`+Object.entries(hdr).map(([k,v])=>` \\\n  -H "${k}: ${v}"`).join('')+(body?(form?` \\\n  -d "${new URLSearchParams(body)}"`:` \\\n  -d '${JSON.stringify(body,null,2)}'`):'');
  const pyc=`import requests\n\nr = requests.${o.v}(\n    "${u}",`+(hk?`\n    headers=${py(hdr)},`:'')+(body?`\n    ${form?'data':'json'}=${py(body)},`:'')+`\n)\nprint(r.status_code, r.text)`;
@@ -119,7 +121,7 @@ function op(o){
  ${hosted?'':`<table><tr><th>Response<th>Returns${resp.map(([c,r])=>`<tr><td><span class="chip ${c[0]==='2'?'ok':'bad'}">${c}</span><td><code>${esc(rt(r))}</code>`).join('')}</table>`+exm}</div>`;
  const right=hosted?'':`<div class="r"><div class="code"><div class="tabs"><button class="on" data-l="0">curl</button><button data-l="1">Python</button><button data-l="2">JavaScript</button><button class="cp">Copy</button></div><pre>${esc(curl)}</pre><pre hidden>${esc(pyc)}</pre><pre hidden>${esc(jsc)}</pre></div>
  <details class="try" data-id="${o.operationId}" open><summary>Try it</summary>
- ${prm.filter(x=>x.in==='path').map(x=>`<label>${x.name}<input data-path="${x.name}" placeholder="${x.name}"></label>`).join('')}
+ ${prm.filter(x=>x.in==='path').map(x=>`<label>${x.name}<input data-path="${x.name}" placeholder="${x.name}"></label>`).join('')}${hdrs.map(x=>`<label>${x.name}<input type="password" data-hdr="${x.name}" placeholder="${x.name}"></label>`).join('')}
  ${body?`<label>Request body (${ct})</label><textarea rows="${Math.min(12,JSON.stringify(body,null,2).split('\n').length+1)}">${esc(JSON.stringify(body,null,2))}</textarea>`:''}
  <button class="send">Send request</button><div class="res"></div></details></div>`;
  return`<div class="op${hosted?' hosted':''}" id="${o.operationId}">${left}${right}</div>`}
@@ -132,8 +134,8 @@ function render(){
  const tag=(spec.info.description||'').split('—').pop().trim()||'The rail that moves trust between institutions.';
  $('#main').innerHTML=`<section id="intro"><div class="ov">Reference exchange API</div><h1>Fidra API</h1><p class="lead">${esc(tag)}</p>
  <label for="base">Base URL</label><input id="base" value="${esc(BASE)}">
- <div class="card"><b>Quickstart</b><ol style="margin:8px 0 0;padding-left:20px"><li><code>POST /v1/institutions</code> with a <code>code</code> and <code>name</code>. Save the returned <code>api_key</code>.</li><li><code>POST /v1/reference-requests</code> with your key in <code>X-API-Key</code>, the customer's name, and the referee's account number and bank code. The response includes <code>referee_authorize_url</code> and <code>customer_status_url</code>.</li><li><code>GET /v1/reference-requests/{public_id}</code> to follow <code>status</code> and <code>history</code> until the request reaches a final status.</li></ol></div></section>
- <section id="auth"><h2>Authentication</h2><p>Send your institution's key in the <code>X-API-Key</code> header on reference-request endpoints. Paste it here to use it in the Try it panels. It stays in this tab only and is never added to the code samples.</p><label for="key">X-API-Key</label><input id="key" type="password" autocomplete="off" value="${esc(KEY)}" placeholder="Paste your API key"></section>
+ <div class="card"><b>Quickstart</b><ol style="margin:8px 0 0;padding-left:20px"><li>Get your institution registered. A Fidra admin calls <code>POST /v1/institutions</code> and gives you the returned <code>api_key</code>, which is shown only once.</li><li><code>POST /v1/reference-requests</code> with your key in <code>X-API-Key</code>, the customer's name, and the referee's account number and bank code. The response includes <code>referee_authorize_url</code> and <code>customer_status_url</code>.</li><li><code>GET /v1/reference-requests/{public_id}</code> to follow <code>status</code> and <code>history</code> until the request reaches a final status.</li></ol></div></section>
+ <section id="auth"><h2>Authentication</h2><p>Send your institution's key in the <code>X-API-Key</code> header. The key is shown once, when your institution is created by a Fidra admin, so store it securely. Paste it here to use it in the Try it panels. It stays in this tab only and is never added to the code samples.</p><label for="key">X-API-Key</label><input id="key" type="password" autocomplete="off" value="${esc(KEY)}" placeholder="Paste your API key"></section>
  <section id="status"><h2>Request statuses</h2><p>A reference request moves through these <code>status</code> values.</p>${flow(sc)}</section>
  <section id="errors"><h2>Errors</h2><p>Invalid requests return <code>422</code> with a <code>detail</code> array describing each problem. This applies to every endpoint.</p><pre class="ex">{\n  "detail": [\n    { "loc": ["body", "customer_full_name"], "msg": "Field required", "type": "missing" }\n  ]\n}</pre></section>
  ${tags.map(t=>`<section id="tag-${t}"><h2>${tn(t)}</h2>${t==='Public'?HOSTED_INTRO:''}${ops.filter(o=>o.tag===t).map(op).join('')}</section>`).join('')}
@@ -150,7 +152,7 @@ async function load(){
 async function send(d){
  const o=ops.find(x=>x.operationId===d.dataset.id),out=$('.res',d),h={},ta=$('textarea',d);let p=o.p,body;
  $$('[data-path]',d).forEach(i=>p=p.replace('{'+i.dataset.path+'}',encodeURIComponent(i.value)));
- if((o.parameters||[]).some(x=>x.name==='X-API-Key')&&KEY)h['X-API-Key']=KEY;
+ if((o.parameters||[]).some(x=>x.name==='X-API-Key')&&KEY)h['X-API-Key']=KEY;$$('[data-hdr]',d).forEach(i=>{if(i.value)h[i.dataset.hdr]=i.value});
  if(ta){const ct=Object.keys(o.requestBody.content)[0];h['Content-Type']=ct;try{const j=JSON.parse(ta.value);body=ct.includes('urlencoded')?new URLSearchParams(j).toString():JSON.stringify(j)}catch(e){out.innerHTML='<span class="chip bad">Body is not valid JSON</span>';return}}
  out.innerHTML='<span class="chip info">Sending…</span> <small>The first call can take about 30 seconds if the server is asleep.</small>';
  const t0=performance.now();

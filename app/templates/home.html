@@ -1,182 +1,154 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fidra — The rail that moves trust</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            ink: '#0A1F3C',
-            trust: '#0B7A5F',
-            rail: '#2F6FED',
-            mint: '#2FD3A0',
-            amber: '#F0A62B',
-            paper: '#F7F6F2',
-            cloud: '#EEF1F5',
-            slate600: '#4B5B73',
-            slate300: '#C5CEDA',
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            display: ['Sora', 'system-ui', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          }
-        }
-      }
-    }
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Sora:wght@600;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
-    h1, h2, h3 { font-family: 'Sora', system-ui, sans-serif; }
-  </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fidra: The rail that moves trust between institutions</title>
+<meta name="description" content="Fidra is a reference exchange network for African financial institutions. Request, receive and track customer references through one API.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232FD3A0'/%3E%3Cpath d='M22 48V18H44M22 32H36' fill='none' stroke='%230A1F3C' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cg fill='%230A1F3C'%3E%3Ccircle cx='44' cy='18' r='6'/%3E%3Ccircle cx='36' cy='32' r='6'/%3E%3Ccircle cx='22' cy='48' r='6'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Sora:wght@600;700&display=swap">
+<style>
+:root{--ink:#0A1F3C;--green:#0B7A5F;--mint:#2FD3A0;--amber:#F0A62B;--paper:#F7F6F2;--cloud:#EEF1F5;--slate:#4B5B73;--line:#C5CEDA}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif}
+h1,h2,h3{font-family:Sora,Inter,sans-serif;letter-spacing:-.02em;margin:0}a{color:inherit;text-decoration:none}
+code,pre,.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.w{max-width:1080px;margin:0 auto;padding:0 24px}
+header{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header .w{display:flex;align-items:center;gap:24px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font:700 21px Sora}.sp{flex:1}
+nav a{font-size:14px;color:var(--slate);margin-right:20px}nav a:hover{color:var(--ink)}
+.btn{display:inline-block;padding:11px 20px;border-radius:8px;font:600 14px Sora;border:1.5px solid transparent;cursor:pointer}
+.b1{background:var(--green);color:#fff}.b3{background:var(--mint);color:var(--ink)}.b4{border-color:#C5CEDA;color:#fff}
+.hero{background:var(--ink);color:#fff;padding:96px 0 88px}
+.ov{font:600 12px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--green)}.hero .ov{color:var(--mint)}
+h1{font-size:clamp(34px,5.4vw,56px);line-height:1.1;margin:14px 0 20px;max-width:760px}
+.lead{font-size:19px;color:#C5CEDA;max-width:620px;margin:0 0 30px}.hero .btn{margin:0 10px 10px 0}
+.rail{display:flex;align-items:center;margin-top:44px;max-width:420px}.rail i{width:11px;height:11px;border-radius:50%;background:var(--mint)}.rail b{flex:1;height:2px;background:#2A4468}
+section.s{padding:76px 0}.s.white{background:#fff;border-block:1px solid var(--line)}
+h2{font-size:clamp(26px,3.6vw,34px);margin:8px 0 12px}.sub{color:var(--slate);max-width:640px;margin:0 0 36px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px}.white .card{background:var(--paper)}
+.card h3{font-size:19px;margin:12px 0 8px}.card p{margin:0 0 12px;color:var(--slate);font-size:15px}.card ul{margin:0;padding-left:18px;color:var(--slate);font-size:14.5px}
+.chip{display:inline-block;font:500 12px 'JetBrains Mono',monospace;padding:3px 10px;border-radius:999px;background:var(--cloud);color:var(--ink)}
+.chip.g{background:#DDF3EB;color:#0B5F4A}.chip.a{background:#FBEBCB;color:#7A5200}.tag{font:600 12px Inter;margin-left:8px;color:#7A5200}
+.demo{background:var(--ink);border-radius:18px;padding:22px;color:#E8EEF6}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.tabs button{background:none;border:1px solid #2A4468;color:#9FB1C7;border-radius:999px;padding:7px 16px;font:500 13px Inter;cursor:pointer}
+.tabs button.on{background:var(--mint);border-color:var(--mint);color:var(--ink)}.tabs .run{margin-left:auto;background:var(--green);border-color:var(--green);color:#fff;font-family:Sora;font-weight:600}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:18px}.dg h4{margin:0 0 8px;font:600 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#9FB1C7}
+pre{margin:0;background:#0E2240;border:1px solid #1E3556;border-radius:10px;padding:14px 16px;overflow:auto;font-size:12.5px;line-height:1.65;color:#E8EEF6}
+.k{color:#6E9BFF}.s2{color:var(--mint)}.n{color:var(--amber)}
+ol.tl{list-style:none;margin:18px 0 0;padding:0}ol.tl li{display:flex;gap:12px;padding:0 0 14px;position:relative;color:#4B6285;font-size:13.5px;transition:color .3s}
+ol.tl li::before{content:'';width:11px;height:11px;border-radius:50%;background:#1E3556;margin-top:5px;flex:none;transition:background .3s;position:relative;z-index:1}
+ol.tl li::after{content:'';position:absolute;left:5px;top:16px;bottom:-5px;width:1.5px;background:#1E3556}ol.tl li:last-child::after{display:none}
+ol.tl li.on{color:#E8EEF6}ol.tl li.on::before{background:var(--mint)}ol.tl li code{font-size:12px;display:block}
+.note{font-size:13px;color:#9FB1C7;margin:14px 0 0}
+.band{background:var(--cloud);border:1px solid var(--line);border-radius:16px;padding:34px;display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.band h3{font-size:20px;margin:0 0 8px}.band p{margin:0 0 16px;color:var(--slate);font-size:15px}
+footer{padding:36px 0;font-size:14px;color:var(--slate)}footer .w{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center}
+@media(max-width:860px){.g2,.g3,.dg,.band{grid-template-columns:1fr}nav{display:none}.tabs .run{margin-left:0}.hero{padding:64px 0}}
+</style>
 </head>
-<body class="bg-paper text-ink min-h-screen">
+<body>
+<header><div class="w">
+ <a class="brand" href="/"><svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0A1F3C"/><path d="M22 48V18H44M22 32H36" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><g fill="#2FD3A0"><circle cx="44" cy="18" r="6"/><circle cx="36" cy="32" r="6"/><circle cx="22" cy="48" r="6"/></g></svg>Fidra</a>
+ <span class="sp"></span><nav><a href="#paths">Two paths</a><a href="#how">How it works</a><a href="#trust">Trust</a><a href="/docs">API docs</a></nav>
+ <a class="btn b1" href="/docs">Get API access</a>
+</div></header>
 
-  <!-- Nav -->
-  <header class="border-b border-slate300/50 bg-white/80 backdrop-blur sticky top-0 z-10">
-    <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-mint flex items-center justify-center">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <circle cx="6" cy="6" r="2.2" fill="#0A1F3C"/>
-            <circle cx="6" cy="18" r="2.2" fill="#0A1F3C"/>
-            <circle cx="18" cy="6" r="2.2" fill="#0A1F3C"/>
-            <path d="M6 8.2V15.8M6 6H16M6 12H14" stroke="#0A1F3C" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <span class="font-display font-semibold text-xl tracking-tight">Fidra</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <a href="/docs" class="text-sm font-medium text-slate600 hover:text-ink transition">API Docs</a>
-        <a href="/docs" class="inline-flex items-center px-4 py-2 rounded-lg bg-trust text-white text-sm font-medium hover:bg-trust/90 transition">
-          Get API access
-        </a>
-      </div>
-    </div>
-  </header>
+<section class="hero"><div class="w">
+ <div class="ov">Reference exchange network</div>
+ <h1>The rail that moves trust between institutions.</h1>
+ <p class="lead">Fidra lets banks, microfinance institutions and fintechs request, receive and track customer references through one API, with a clear record of every step.</p>
+ <a class="btn b3" href="/docs">Get API access</a><a class="btn b4" href="#bank">Join as a bank</a>
+ <div class="rail" aria-hidden="true"><i></i><b></b><i></i></div>
+</div></section>
 
-  <!-- Hero -->
-  <section class="max-w-5xl mx-auto px-6 pt-16 pb-20">
-    <div class="max-w-2xl">
-      <p class="text-sm font-medium text-trust uppercase tracking-wider mb-4">Reference exchange network</p>
-      <h1 class="text-4xl sm:text-5xl font-bold leading-tight tracking-tight mb-6">
-        The rail that moves trust between institutions.
-      </h1>
-      <p class="text-lg text-slate600 leading-relaxed mb-8 max-w-xl">
-        Fidra lets banks, microfinance institutions and fintechs request, exchange and track customer references instantly via API — replacing days of email and phone follow-up with minutes.
-      </p>
-      <div class="flex flex-wrap gap-3">
-        <a href="/docs" class="inline-flex items-center px-5 py-3 rounded-lg bg-trust text-white font-medium hover:bg-trust/90 transition">
-          Explore the API
-        </a>
-        <a href="/docs" class="inline-flex items-center px-5 py-3 rounded-lg border border-ink/15 text-ink font-medium hover:bg-cloud transition">
-          Read the docs
-        </a>
-      </div>
-    </div>
-  </section>
+<section class="s" id="paths"><div class="w">
+ <div class="ov">Two ways to get a reference</div>
+ <h2>Every answer says how strong it is.</h2>
+ <p class="sub">Fidra picks the path from the referee's bank. Each result carries an assurance level, so you can see whether the referee said it or their bank confirmed it.</p>
+ <div class="g2">
+  <div class="card"><span class="chip">self_attested</span><h3>Path A: referee link</h3>
+   <p>The referee receives a secure link, confirms whether the account is in good standing, and says how long they have held it.</p>
+   <ul><li>Works with any referee bank, with no integration needed</li><li>The answer is the referee's own statement</li><li>Links expire, and every step is recorded</li></ul></div>
+  <div class="card"><span class="chip g">bank_confirmed</span><span class="tag">Pilot · available with connected banks</span><h3>Path B: bank-confirmed</h3>
+   <p>When the referee's bank is on the Fidra network, the bank checks the account before the referee is asked.</p>
+   <ul><li>The bank confirms the account exists and is active</li><li>A missing account stops the request early</li><li>The result is marked as confirmed by the bank</li></ul></div>
+ </div>
+</div></section>
 
-  <!-- How it works -->
-  <section class="bg-white border-y border-slate300/50">
-    <div class="max-w-5xl mx-auto px-6 py-16">
-      <h2 class="text-2xl font-semibold mb-10">How it works</h2>
-      <div class="grid sm:grid-cols-3 gap-8">
-        <div>
-          <div class="w-10 h-10 rounded-lg bg-cloud flex items-center justify-center mb-4 font-mono text-sm font-medium text-trust">01</div>
-          <h3 class="font-semibold mb-2">Request</h3>
-          <p class="text-slate600 text-sm leading-relaxed">Institution A sends a structured reference request for a customer via a single API call.</p>
-        </div>
-        <div>
-          <div class="w-10 h-10 rounded-lg bg-cloud flex items-center justify-center mb-4 font-mono text-sm font-medium text-trust">02</div>
-          <h3 class="font-semibold mb-2">Authorize</h3>
-          <p class="text-slate600 text-sm leading-relaxed">The referee receives a secure link, reviews the request and confirms with one click.</p>
-        </div>
-        <div>
-          <div class="w-10 h-10 rounded-lg bg-cloud flex items-center justify-center mb-4 font-mono text-sm font-medium text-trust">03</div>
-          <h3 class="font-semibold mb-2">Complete</h3>
-          <p class="text-slate600 text-sm leading-relaxed">Both sides get a signed, auditable response and real-time status — usually in minutes.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+<section class="s white" id="how"><div class="w">
+ <div class="ov">How it works</div>
+ <h2>One request. One status trail.</h2>
+ <p class="sub">Pick a path and press Run example to watch a request move through its statuses. This is an example running in your browser. It does not call a live API.</p>
+ <div class="demo">
+  <div class="tabs" role="tablist"><button class="on" data-p="A" role="tab">Path A: referee link</button><button data-p="B" role="tab">Path B: bank-confirmed</button><button class="run" id="run">Run example</button></div>
+  <div class="dg">
+   <div><h4>Request</h4><pre id="req"></pre><ol class="tl" id="tl"></ol></div>
+   <div><h4>Response</h4><pre id="res"></pre></div>
+  </div>
+  <p class="note">Example data only. Names, numbers and bank codes are made up.</p>
+ </div>
+</div></section>
 
-  <!-- Value props -->
-  <section class="max-w-5xl mx-auto px-6 py-16">
-    <div class="grid sm:grid-cols-2 gap-10">
-      <div>
-        <h2 class="text-2xl font-semibold mb-4">Built for institutions that can't afford to guess.</h2>
-        <p class="text-slate600 leading-relaxed">
-          Manual references create delays, frozen accounts and compliance risk. Fidra turns the process into infrastructure: clear status, clear record, clear answer.
-        </p>
-      </div>
-      <div class="space-y-4">
-        <div class="flex gap-3 items-start">
-          <div class="w-5 h-5 rounded-full bg-verified/15 flex items-center justify-center mt-0.5">
-            <div class="w-2 h-2 rounded-full bg-verified"></div>
-          </div>
-          <div>
-            <p class="font-medium">Real-time status</p>
-            <p class="text-sm text-slate600">Customers and staff always know where a reference stands.</p>
-          </div>
-        </div>
-        <div class="flex gap-3 items-start">
-          <div class="w-5 h-5 rounded-full bg-verified/15 flex items-center justify-center mt-0.5">
-            <div class="w-2 h-2 rounded-full bg-verified"></div>
-          </div>
-          <div>
-            <p class="font-medium">Full audit trail</p>
-            <p class="text-sm text-slate600">Every action is timestamped and attributable.</p>
-          </div>
-        </div>
-        <div class="flex gap-3 items-start">
-          <div class="w-5 h-5 rounded-full bg-verified/15 flex items-center justify-center mt-0.5">
-            <div class="w-2 h-2 rounded-full bg-verified"></div>
-          </div>
-          <div>
-            <p class="font-medium">API-first</p>
-            <p class="text-sm text-slate600">Integrate once. Request, track and receive programmatically.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+<section class="s"><div class="w">
+ <div class="ov">What the result tells you</div>
+ <h2>Three levels of assurance.</h2>
+ <p class="sub">Your team decides how much weight each level carries for each product.</p>
+ <div class="g3">
+  <div class="card"><span class="chip">self_attested</span><h3>The referee said so</h3><p>The referee confirmed through the link. Fidra records who answered and when.</p></div>
+  <div class="card"><span class="chip a">otp_verified · planned</span><h3>The referee proved it is them</h3><p>The referee confirms with a one-time code sent to a phone number on file.</p></div>
+  <div class="card"><span class="chip g">bank_confirmed</span><h3>The bank confirmed it</h3><p>The referee's own bank checked the account. Available with connected banks.</p></div>
+ </div>
+</div></section>
 
-  <!-- CTA band -->
-  <section class="bg-ink text-white">
-    <div class="max-w-5xl mx-auto px-6 py-14 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-      <div>
-        <h2 class="text-xl font-semibold mb-1">Ready to move trust faster?</h2>
-        <p class="text-white/70 text-sm">Start with the API docs. Demo keys are available on first deploy.</p>
-      </div>
-      <a href="/docs" class="inline-flex items-center px-5 py-3 rounded-lg bg-mint text-ink font-medium hover:bg-mint/90 transition">
-        Open API Docs
-      </a>
-    </div>
-  </section>
+<section class="s white" id="trust"><div class="w">
+ <div class="ov">Built for audit</div>
+ <h2>A clear record of every reference.</h2>
+ <p class="sub">Fidra is infrastructure. It should be quiet, predictable and easy to inspect.</p>
+ <div class="g2">
+  <div class="card"><h3>Consent on record</h3><p>Every request records whether the customer consented, and when.</p></div>
+  <div class="card"><h3>Full status history</h3><p>Each change is stored with who made it, when, and an optional note.</p></div>
+  <div class="card"><h3>Links that expire</h3><p>Referee links stop working after a set period, so old requests cannot be reused.</p></div>
+  <div class="card"><h3>Keys shown once</h3><p>API keys are stored hashed and displayed only when an institution is created.</p></div>
+ </div>
+</div></section>
 
-  <!-- Footer -->
-  <footer class="border-t border-slate300/50">
-    <div class="max-w-5xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate600">
-      <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-md bg-mint flex items-center justify-center">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-            <circle cx="6" cy="6" r="2.2" fill="#0A1F3C"/>
-            <circle cx="6" cy="18" r="2.2" fill="#0A1F3C"/>
-            <circle cx="18" cy="6" r="2.2" fill="#0A1F3C"/>
-            <path d="M6 8.2V15.8M6 6H16M6 12H14" stroke="#0A1F3C" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <span class="font-display font-semibold text-ink">Fidra</span>
-      </div>
-      <p>The rail that moves trust between institutions.</p>
-    </div>
-  </footer>
+<section class="s" id="bank"><div class="w">
+ <div class="band">
+  <div><div class="ov">For banks and fintechs</div><h3>Ask for references, and answer them.</h3><p>Request references through the API today. Connect your bank as a responding institution and your customers' references can be confirmed at the source.</p></div>
+  <div><h3>Talk to us</h3><p>Message us on social media at <b>@getfidra</b>, or start with the API docs and your own test requests.</p><a class="btn b1" href="/docs">Read the API docs</a></div>
+ </div>
+</div></section>
 
+<footer><div class="w"><b style="font-family:Sora;color:var(--ink)">Fidra</b><span>The rail that moves trust between institutions.</span><span class="sp"></span><span>@getfidra</span><a href="/docs">API docs</a></div></footer>
+
+<script>
+const $=s=>document.querySelector(s),O=location.origin;
+const base=[['submitted','Request created by the institution']];
+const D={
+ A:{bank:'901',path:'path_a',as:'self_attested',steps:base.concat([['referee_notified','Referee link ready to send'],['referee_viewed','Referee opens the link'],['authorized','Referee confirms'],['completed','Reference completed']]),
+    result:{good_standing:true,relationship_length_band:'1-3_years',account_verified:false,confirmation_type:'self_attested'}},
+ B:{bank:'902',path:'path_b',as:'bank_confirmed',steps:base.concat([['pending_bank_confirmation','Referee bank confirms the account'],['authorized','Referee confirms'],['completed','Reference completed']]),
+    result:{account_exists:true,account_active:true,account_name_match:true,good_standing:true,confirmation_type:'bank_confirmed'}}
+};
+let P='A',I=1,T=null;
+const hl=o=>JSON.stringify(o,null,2).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))
+ .replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:').replace(/: ("[^"]*")/g,': <span class="s2">$1</span>').replace(/\b(true|false|null)\b/g,'<span class="n">$1</span>');
+function draw(){
+ const d=D[P],last=d.steps.length-1;
+ $('#req').textContent=['curl -X POST '+O+'/v1/reference-requests \\','  -H "X-API-Key: YOUR_API_KEY" \\','  -H "Content-Type: application/json" \\',"  -d '{",'  "customer_full_name": "Adaeze Okafor",','  "referee_account_number": "0123456789",','  "referee_bank_code": "'+d.bank+'",','  "purpose": "account_opening",','  "consent_given": true',"}'"].join('\n');
+ $('#res').innerHTML=hl({public_id:'req_8f3a92kq',status:d.steps[I][0],path:d.path,assurance_level:d.as,customer_full_name:'Adaeze Okafor',referee_bank_code:d.bank,purpose:'account_opening',
+  referee_authorize_url:O+'/r/ref_...',customer_status_url:O+'/c/cust_...',response_payload:I===last?d.result:null});
+ $('#tl').innerHTML=d.steps.map((s,i)=>'<li class="'+(i<=I?'on':'')+'"><div><code>'+s[0]+'</code>'+s[1]+'</div></li>').join('');
+ document.querySelectorAll('.tabs [data-p]').forEach(b=>{b.classList.toggle('on',b.dataset.p===P);b.setAttribute('aria-selected',b.dataset.p===P)});
+}
+function stop(){clearInterval(T);T=null}
+document.querySelectorAll('.tabs [data-p]').forEach(b=>b.onclick=()=>{stop();P=b.dataset.p;I=1;$('#run').textContent='Run example';draw()});
+$('#run').onclick=()=>{stop();I=0;draw();$('#run').textContent='Running...';
+ T=setInterval(()=>{I++;draw();if(I>=D[P].steps.length-1){stop();$('#run').textContent='Run again'}},950)};
+draw();
+</script>
 </body>
 </html>

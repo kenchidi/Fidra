@@ -3,10 +3,17 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+_url = settings.database_url
+if _url.startswith("postgres://"):  # some hosts still hand out the old scheme
+    _url = _url.replace("postgres://", "postgresql://", 1)
+
+_connect_args = {"check_same_thread": False} if _url.startswith("sqlite") else {}
+
 engine = create_engine(
-    settings.database_url,
+    _url,
     echo=settings.debug,
-    connect_args={"check_same_thread": False}  # needed for SQLite
+    connect_args=_connect_args,
+    pool_pre_ping=True,
 )
 
 

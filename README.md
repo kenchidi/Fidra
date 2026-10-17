@@ -10,7 +10,7 @@ It lets banks, MFBs, fintechs and lenders request, exchange and track customer r
 ## Run Locally
 
 ```bash
-cd refnet   # or fidra if you rename the folder
+cd Fidra
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
@@ -19,7 +19,16 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - API docs → http://localhost:8000/docs  
 - Health   → http://localhost:8000/health  
 
-On startup the server seeds demo institutions and prints their API keys.
+### Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Postgres URL in production. Defaults to local SQLite. |
+| `ADMIN_API_KEY` | Required to create institutions (`X-Admin-Key` header). Empty disables the endpoint. |
+| `SEED_DEMO_DATA` | `true` seeds demo institutions and prints their keys. Development only. |
+| `CORS_ORIGINS` | Comma-separated allowed browser origins. |
+
+API keys are stored hashed and shown once, when an institution is created.
 
 ---
 
@@ -41,6 +50,16 @@ On startup the server seeds demo institutions and prints their API keys.
 ---
 
 ## Core API Flow
+
+Create an institution (admin only, the key is returned once):
+
+```bash
+curl -X POST https://YOUR-URL/v1/institutions \\
+  -H "X-Admin-Key: <admin_key>" -H "Content-Type: application/json" \\
+  -d '{"code": "mybank", "name": "My Bank", "bank_code": "123"}'
+```
+
+Then create a reference request:
 
 ```bash
 curl -X POST https://YOUR-URL/v1/reference-requests \

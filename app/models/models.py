@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 from sqlmodel import SQLModel, Field, Column, JSON
+import hashlib
 import secrets
 
 
@@ -11,6 +12,16 @@ def utcnow() -> datetime:
 
 def generate_token(prefix: str = "") -> str:
     return f"{prefix}{secrets.token_urlsafe(24)}"
+
+
+def hash_api_key(key: str) -> str:
+    """API keys are long random strings, so a plain SHA-256 is sufficient (no salt needed)."""
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def new_api_key() -> tuple:
+    plain = generate_token("rk_")
+    return plain, hash_api_key(plain)
 
 
 class RequestStatus(str, Enum):
@@ -39,7 +50,9 @@ class Institution(SQLModel, table=True):
     code: str = Field(index=True, unique=True)
     name: str
     bank_code: Optional[str] = Field(default=None, index=True)
-    api_key: str = Field(default_factory=lambda: generate_token("rk_"))
+    # Only a hash is stored. The plain key is shown once, when the institution is created.
+    api_key_hash: str = Field(index=True, unique=True)
+    api_key_prefix: str = ""
     is_active: bool = True
     # Path B: institution can act as responding bank on the network
     network_connected: bool = False

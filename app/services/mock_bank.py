@@ -56,4 +56,6 @@ def build_bank_reference_response(
         "responded_by_name": institution.name,
         "assurance_level": "bank_confirmed",
         "confirmation_type": "bank_confirmed",
+        # This connector is a mock. Remove when a real bank integration replaces it.
+        "simulated": True,
     }

@@ -19,7 +19,7 @@ class CreateReferenceRequest(BaseModel):
 
 
 class ResponsePayload(BaseModel):
-    account_exists: bool = True
+    account_exists: Optional[bool] = None  # None = not verified
     account_name_match: Optional[bool] = None
     relationship_length_band: Optional[str] = None
     good_standing: bool = True

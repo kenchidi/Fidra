@@ -51,8 +51,8 @@ def referee_authorize(
     req = svc.get_request_by_referee_token(session, token)
 
     payload = ResponsePayload(
-        account_exists=True,
-        account_name_match=True,
+        account_exists=None,        # nobody verified this
+        account_name_match=None,
         good_standing=good_standing == "yes",
         relationship_length_band=relationship,
         additional_comments=comments or None,

@@ -10,6 +10,7 @@ from pathlib import Path
 from app.core.config import get_settings
 from app.core.database import create_db_and_tables, engine
 from app.models.models import Institution
+from app.services.institution_service import create_institution
 from app.api.routes import router as api_router
 from app.api.public import router as public_router
 
@@ -42,25 +43,24 @@ def seed_institutions():
         {"code": "opay", "name": "OPay Digital Services", "bank_code": "100004", "network_connected": False},
     ]
     with Session(engine) as session:
+        print("\n=== Fidra Demo Institutions (development only) ===")
         for item in demo:
             existing = session.exec(
                 select(Institution).where(Institution.code == item["code"])
             ).first()
-            if not existing:
-                session.add(Institution(**item))
-        session.commit()
-
-        print("\n=== Fidra Demo Institutions ===")
-        institutions = session.exec(select(Institution)).all()
-        for inst in institutions:
-            print(f"  {inst.name:30} | code={inst.code:12} | API Key: {inst.api_key}")
-        print("================================\n")
+            if existing:
+                print(f"  {existing.name:30} | code={existing.code:12} | key already issued")
+                continue
+            inst, plain = create_institution(session, **item)
+            print(f"  {inst.name:30} | code={inst.code:12} | API Key: {plain}")
+        print("===================================================\n")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
-    seed_institutions()
+    if settings.seed_demo_data:
+        seed_institutions()
     yield
 
 
@@ -75,8 +75,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: refnet
+    name: fidra
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -8,3 +8,17 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.3"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fidra-db
+          property: connectionString
+      - key: ADMIN_API_KEY
+        sync: false          # set this in the Render dashboard
+      - key: SEED_DEMO_DATA
+        value: "false"
+      - key: CORS_ORIGINS
+        value: "*"           # replace with your real front-end origins
+
+databases:
+  - name: fidra-db
+    plan: free               # Render's free Postgres expires after a limited period; upgrade before real data
