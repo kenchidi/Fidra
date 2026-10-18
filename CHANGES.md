@@ -15,6 +15,8 @@ Replace the files listed below in your repo (same paths), then set the environme
 - app/services/mock_bank.py  mock responses marked "simulated": true
 - app/services/reference_service.py     self-attested responses carry "account_verified": false
 - app/api/routes.py (also: GET /v1/inbox, POST /v1/reference-requests/{id}/bank-response)
+- app/api/public.py, app/templates/referee.html, app/templates/referee_done.html   referee page reworked (see below)
+- app/templates/dash_new.html, dash_detail.html, dash_inbox.html, dash_inbox_detail.html   (updated for signed forms)
 - app/templates/dash_inbox.html, dash_inbox_detail.html, dash_account.html, dash_team.html   NEW
 - app/services/mock_bank.py  DELETE this file from your repo (no longer used)
 - app/templates/home.html   NEW homepage: Path A / Path B, in-browser example, assurance levels, Sign in link
@@ -50,8 +52,17 @@ Not yet included: staff management screen, password change or reset, different p
 - New staff logins (created by Fidra or by a bank admin) must choose their own password on first sign-in. Everyone can change theirs under their name at the top right.
 - Admins get a Team page: add people, switch them off or on, set a new temporary password.
 - Changed table: referencerequest has three new columns and staffuser has one. Start from a fresh database (Render's free plan resets on redeploy anyway).
-- Known leftover: the referee page still asks the referee about good standing. In Path B that answer is ignored, because the bank decides.
+- Referee page reworked. Path B: the person is only asked to agree ("I agree" / decline) and is told what their bank will confirm; no good-standing or tenure questions, because the bank answers those. Path A: wording says the answers are the referee's own statement, not checked by a bank. Both: the account number is masked, and the asking bank is named.
 - Still not built: automatic SMS/email to the referee, a real-time bank integration beyond the API endpoints, different permissions for officers and supervisors, per-staff request history.
+
+## Update: signed bank forms (new)
+When the referee's bank is on Fidra, the requesting bank's officer chooses "Signed bank form" on the New request screen and uploads a photo or scan of the form the referee signed on paper. The other bank sees it in its Inbox, compares the signature with its specimen, and answers: matches / doesn't match / photo unclear (asks for a clearer copy). The referee needs no phone or device. "Send a link" still works for referees who have one.
+- Rules: JPG, PNG or PDF up to 5 MB (checked by file content, not the name). Only the two banks can open a form. Every view is logged (table formviewlog). Forms are deleted after SIGNED_FORM_RETENTION_DAYS (default 90, set it in Render if you want another period); the record that a form existed is kept.
+- The result says how the referee was verified ("Signature compared by <bank>"). A mismatch ends the request with a clear message.
+- API: POST/GET /v1/reference-requests/{public_id}/signed-form, and a new signature_match field on the bank-response call (required when the request came with a signed form).
+- Storage: images are kept in the database for the pilot. Use Postgres, because Render's free app disk is wiped on restart. Render's free Postgres expires after a limited period, so check that before real use.
+- New tables: signedform, formviewlog. New columns on referencerequest: verification_method, form_status. Start from a fresh database.
+- Not covered: a second check on who signed (for example a call or code to the number the bank holds), and printing a bank's own form template inside Fidra.
 
 ## Important
 - The institution table changed (api_key -> api_key_hash). Existing databases are not migrated. Start from a fresh database, then recreate institutions through the admin endpoint.

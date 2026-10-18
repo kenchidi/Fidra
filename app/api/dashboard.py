@@ -5,8 +5,8 @@ from datetime import timedelta
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlmodel import Session, select
 
@@ -94,6 +94,14 @@ EVENT_LABELS = {
 
 def event_label(e) -> str:
     note = e.note or ""
+    if note.startswith("Signed form uploaded"):
+        return "Signed form sent to the referee's bank"
+    if note.startswith("New copy"):
+        return "A clearer copy of the form was sent"
+    if "asked for a clearer copy" in note:
+        return "The referee's bank asked for a clearer copy"
+    if note.startswith("Signature did not match"):
+        return "The bank couldn't match the signature"
     if note.startswith("Referee agreed"):
         return "Referee agreed to the check"
     if note.endswith("confirmed the account"):
@@ -105,12 +113,18 @@ def event_label(e) -> str:
 
 def banner(req: ReferenceRequest) -> dict:
     s = getattr(req.status, "value", req.status)
+    pl = req.response_payload or {}
+    if s == "failed" and pl.get("signature_match") == "mismatch":
+        return {"tone": "bad", "title": "The referee's bank could not match the signature", "sub": "The signature on the form did not match the bank's records. Check the form with the referee and start a new request.", "icon": "x"}
+    if s == "pending_bank_confirmation" and req.form_status == "unclear":
+        return {"tone": "warn", "title": "The referee's bank couldn't read the form", "sub": "Upload a clearer photo or scan below.", "icon": "clock"}
     if s == "failed" and (req.response_payload or {}).get("account_exists") is False:
         return {"tone": "bad", "title": "The referee's bank couldn't find that account", "sub": "Check the account number and bank, then start a new request.", "icon": "x"}
     bank = req.assurance_level == "bank_confirmed"
     if s in ("authorized", "completed"):
         if bank:
-            return {"tone": "ok", "title": "Confirmed by the referee's bank", "icon": "bank"}
+            sub = f"Signature compared by {pl.get('responded_by_name') or 'the bank'}" if req.verification_method == "signed_form" else None
+            return {"tone": "ok", "title": "Confirmed by the referee's bank", "sub": sub, "icon": "bank"}
         return {"tone": "ok", "title": "Confirmed by the referee", "sub": "Not checked by a bank. This is the referee's own answer.", "icon": "person"}
     if s == "declined":
         return {"tone": "bad", "title": "The referee declined", "icon": "x"}
@@ -126,6 +140,8 @@ def confirmed_items(p: dict, bank: bool) -> list:
         return []
     yes = lambda v: str(v).lower() in ("true", "yes")
     items = []
+    if p.get("signature_match") == "matches":
+        items.append(("Signature matches the bank's records", True))
     if bank:
         for key, label in (("account_exists", "Referee's account exists"), ("account_active", "Account is active"),
                            ("account_name_match", "Name on the account matches")):
@@ -140,6 +156,18 @@ def _fmt_req(r: ReferenceRequest) -> dict:
     label, tone = friendly(r.status)
     return {"id": r.public_id, "name": r.customer_full_name, "purpose": r.purpose, "label": label, "tone": tone,
             "bank": r.assurance_level == "bank_confirmed", "created": r.created_at}
+
+
+def _form_info(session: Session, req: ReferenceRequest):
+    f = svc.latest_form(session, req)
+    if not f:
+        return None
+    return {"name": f.filename, "pdf": f.content_type == "application/pdf", "at": f.uploaded_at, "removed": f.data is None}
+
+
+def _responder_name(session: Session, req: ReferenceRequest) -> str:
+    inst = session.get(Institution, req.responding_institution_id) if req.responding_institution_id else None
+    return inst.name if inst else "the referee's bank"
 
 
 # ---------------- auth
@@ -205,12 +233,14 @@ def new_submit(
     request: Request,
     customer_full_name: str = Form(""), customer_phone: str = Form(""), purpose: str = Form("account_opening"),
     referee_account_number: str = Form(""), referee_bank: str = Form(""), other_bank_code: str = Form(""),
-    consent: str = Form(""), csrf_token: str = Form("", alias="csrf"),
+    consent: str = Form(""), confirm_method: str = Form("link"), form_checked: str = Form(""),
+    form_file: UploadFile = File(None), csrf_token: str = Form("", alias="csrf"),
     staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session),
 ):
     check_csrf(request, csrf_token)
     form = dict(customer_full_name=customer_full_name, customer_phone=customer_phone, purpose=purpose,
-                referee_account_number=referee_account_number, referee_bank=referee_bank, other_bank_code=other_bank_code)
+                referee_account_number=referee_account_number, referee_bank=referee_bank, other_bank_code=other_bank_code,
+                confirm_method=confirm_method)
     bank_code = (other_bank_code if referee_bank == "__other" else referee_bank).strip()
     acct = referee_account_number.strip()
     error = None
@@ -222,17 +252,37 @@ def new_submit(
         error = "Choose the referee's bank."
     elif not consent:
         error = "Confirm that the customer has agreed to this reference check."
+    use_form = confirm_method == "form"
+    data = b""
+    if use_form and not error:
+        connected = session.exec(select(Institution).where(Institution.bank_code == bank_code, Institution.network_connected == True,  # noqa: E712
+                                                           Institution.is_active == True)).first()
+        if not connected:
+            error = "The signed-form route is only for banks on Fidra. Choose \u201cSend a link\u201d instead."
+        else:
+            data = form_file.file.read(svc.MAX_FORM_BYTES + 1) if form_file is not None and form_file.filename else b""
+            if not data:
+                error = "Attach a photo or scan of the signed form."
+            elif not form_checked:
+                error = "Confirm that you have checked the form is complete and signed."
+            else:
+                try:
+                    svc.validate_form_bytes(data)
+                except HTTPException as e:
+                    error = e.detail
     if error:
         return page("dash_new.html", request, 422, banks=_bank_options(session), form=form, error=error, **ctx_for(staff, session, "new"))
     inst = session.get(Institution, staff.institution_id)
     body = CreateReferenceRequest(customer_full_name=customer_full_name.strip(), customer_phone=customer_phone.strip() or None,
                                   referee_account_number=acct, referee_bank_code=bank_code, purpose=purpose, consent_given=True)
     req = svc.create_reference_request(session, body, inst, base_url=str(request.base_url).rstrip("/"))
+    if use_form:
+        svc.attach_signed_form(session, req, inst, form_file.filename, data, staff_id=staff.id)
     return RedirectResponse(f"/app/requests/{req.public_id}", status_code=303)
 
 
 @router.get("/requests/{public_id}", response_class=HTMLResponse)
-def detail(public_id: str, request: Request, print: int = 0, staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
+def detail(public_id: str, request: Request, print: int = 0, err: str = "", staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
     req = session.exec(select(ReferenceRequest).where(ReferenceRequest.public_id == public_id)).first()
     if not req or req.requesting_institution_id != staff.institution_id:
         raise HTTPException(status_code=404, detail="Request not found")
@@ -253,6 +303,8 @@ def detail(public_id: str, request: Request, print: int = 0, staff: StaffUser = 
                 comment=payload.get("additional_comments"), decline_reason=declined,
                 share=(link if waiting else None), wa=wa,
                 is_b=req.path == "path_b", agreed=bool(req.referee_consent_at), bank_done=bool(req.bank_answer),
+                signed=req.verification_method == "signed_form", unclear=req.form_status == "unclear",
+                form_info=_form_info(session, req), form_error=err[:200], responder=_responder_name(session, req),
                 customer_link=f"{base}/c/{req.customer_token}", **ctx_for(staff, session, "list"))
 
 
@@ -270,14 +322,16 @@ def inbox_list(request: Request, done: int = 0, staff: StaffUser = Depends(curre
     for r in svc.pending_for_bank(session, staff.institution_id):
         by = session.get(Institution, r.requesting_institution_id)
         rows.append({"id": r.public_id, "name": r.customer_full_name, "by": by.name if by else "", "account": r.referee_account_number,
-                     "agreed": bool(r.referee_consent_at), "created": r.created_at})
+                     "agreed": bool(r.referee_consent_at), "created": r.created_at,
+                     "form": r.verification_method == "signed_form", "unclear": r.form_status == "unclear"})
     return page("dash_inbox.html", request, rows=rows, done=bool(done), **ctx_for(staff, session, "inbox"))
 
 
 def _inbox_page(request, staff, session, req, status_code=200, error=None):
     by = session.get(Institution, req.requesting_institution_id)
     return page("dash_inbox_detail.html", request, status_code, r=req, by=by.name if by else "another bank", error=error,
-                closed=req.status != RequestStatus.pending_bank_confirmation, **ctx_for(staff, session, "inbox"))
+                closed=req.status != RequestStatus.pending_bank_confirmation, form_info=_form_info(session, req),
+                signed=req.verification_method == "signed_form", unclear=req.form_status == "unclear", **ctx_for(staff, session, "inbox"))
 
 
 @router.get("/inbox/{public_id}", response_class=HTMLResponse)
@@ -287,22 +341,59 @@ def inbox_detail(public_id: str, request: Request, staff: StaffUser = Depends(cu
 
 @router.post("/inbox/{public_id}", response_class=HTMLResponse)
 def inbox_submit(
-    public_id: str, request: Request, decision: str = Form(""), account_active: str = Form("yes"), good_standing: str = Form("yes"),
-    relationship: str = Form(""), comments: str = Form(""), csrf_token: str = Form("", alias="csrf"),
+    public_id: str, request: Request, decision: str = Form(""), signature: str = Form(""), account_active: str = Form("yes"),
+    good_standing: str = Form("yes"), relationship: str = Form(""), comments: str = Form(""), csrf_token: str = Form("", alias="csrf"),
     staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session),
 ):
     check_csrf(request, csrf_token)
     req = _inbox_req(session, staff, public_id)
-    if decision not in ("confirm", "not_found"):
-        return _inbox_page(request, staff, session, req, 422, "Choose whether you found the account.")
-    found = decision == "confirm"
+    signed = req.verification_method == "signed_form"
+    if signed:
+        if signature not in ("matches", "mismatch", "unclear"):
+            return _inbox_page(request, staff, session, req, 422, "Say whether the signature matches your records.")
+        if signature == "matches" and decision not in ("confirm", "not_found"):
+            return _inbox_page(request, staff, session, req, 422, "Choose whether you found the account.")
+        found = decision != "not_found"
+    else:
+        if decision not in ("confirm", "not_found"):
+            return _inbox_page(request, staff, session, req, 422, "Choose whether you found the account.")
+        found = decision == "confirm"
     body = BankResponseBody(account_exists=found, account_active=found and account_active == "yes", good_standing=found and good_standing == "yes",
-                            relationship_length_band=(relationship or None) if found else None, comments=comments.strip() or None)
+                            relationship_length_band=(relationship or None) if found else None, comments=comments.strip() or None,
+                            signature_match=signature if signed else None)
     try:
         svc.submit_bank_response(session, req, session.get(Institution, staff.institution_id), body)
     except HTTPException as e:
         return _inbox_page(request, staff, session, req, 400, e.detail)
     return RedirectResponse("/app/inbox?done=1", status_code=303)
+
+
+# ---------------- signed forms
+@router.get("/forms/{public_id}")
+def view_form(public_id: str, staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
+    req = session.exec(select(ReferenceRequest).where(ReferenceRequest.public_id == public_id)).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Not found")
+    form = svc.get_signed_form(session, req, session.get(Institution, staff.institution_id), staff_id=staff.id)
+    disposition = "inline" if form.content_type.startswith("image/") else "attachment"
+    return Response(content=form.data, media_type=form.content_type,
+                    headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+                             "Content-Disposition": f'{disposition}; filename="signed-form-{public_id}"'})
+
+
+@router.post("/requests/{public_id}/form")
+def replace_form(public_id: str, request: Request, form_file: UploadFile = File(None), csrf_token: str = Form("", alias="csrf"),
+                 staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
+    check_csrf(request, csrf_token)
+    req = session.exec(select(ReferenceRequest).where(ReferenceRequest.public_id == public_id)).first()
+    if not req or req.requesting_institution_id != staff.institution_id:
+        raise HTTPException(status_code=404, detail="Request not found")
+    try:
+        data = form_file.file.read(svc.MAX_FORM_BYTES + 1) if form_file is not None and form_file.filename else b""
+        svc.attach_signed_form(session, req, session.get(Institution, staff.institution_id), form_file.filename if form_file else "", data, staff_id=staff.id)
+    except HTTPException as e:
+        return RedirectResponse(f"/app/requests/{public_id}?err={quote(str(e.detail))}", status_code=303)
+    return RedirectResponse(f"/app/requests/{public_id}", status_code=303)
 
 
 # ---------------- own account: change password

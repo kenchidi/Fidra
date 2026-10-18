@@ -3,7 +3,15 @@
 <p class="muted noprint" style="margin:0 0 4px"><a href="/app/requests">&larr; All requests</a></p>
 <p class="muted" style="margin:0">{{ r.customer_full_name }} · {{ r.purpose|nice }}</p>
 <div class="ban {{ view.tone }}"><div><h2>{{ view.title }}</h2>{% if view.sub %}<p>{{ view.sub }}</p>{% endif %}{% if decline_reason %}<p>Reason given: {{ decline_reason }}</p>{% endif %}<p>Sent {{ r.created_at|wat }} WAT{% if r.completed_at %} · Completed {{ r.completed_at|wat }} WAT{% endif %}</p></div></div>
-{% if is_b and view.tone=='warn' %}<div class="card noprint"><h3 class="sec" style="margin-top:0">Two things are needed</h3><div style="padding:3px 0">{{ "✓" if agreed else "○" }} The referee agrees to the check</div><div style="padding:3px 0">{{ "✓" if bank_done else "○" }} The referee's bank confirms the account</div></div>{% endif %}
+{% if form_error %}<div class="err">{{ form_error }}</div>{% endif %}
+{% if signed %}<div class="card"><h3 class="sec" style="margin-top:0">Signed form</h3>
+{% if form_info and not form_info.removed %}<p class="muted">Sent {{ form_info.at|wat }} WAT. Only you and {{ responder }} can open it.</p>
+{% if form_info.pdf %}<a class="btn alt" href="/app/forms/{{ r.public_id }}">Open the PDF</a>{% else %}<img src="/app/forms/{{ r.public_id }}" alt="Signed form" style="max-width:100%;max-height:380px;border:1px solid var(--line);border-radius:8px">{% endif %}
+{% elif form_info %}<p class="muted">The form was deleted after the retention period.</p>{% endif %}
+{% if view.tone=='warn' %}<p style="margin:14px 0 0">{{ responder }} is comparing the signature with its records and confirming the account.</p>{% endif %}
+{% if unclear %}<form method="post" action="/app/requests/{{ r.public_id }}/form" enctype="multipart/form-data" class="noprint" style="margin-top:12px"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Clearer photo or scan (JPG, PNG or PDF, up to 5 MB)</label><input type="file" name="form_file" accept="image/jpeg,image/png,application/pdf" required><div style="margin-top:10px"><button class="btn">Send clearer copy</button></div></form>{% endif %}
+</div>{% endif %}
+{% if is_b and not signed and view.tone=='warn' %}<div class="card noprint"><h3 class="sec" style="margin-top:0">Two things are needed</h3><div style="padding:3px 0">{{ "✓" if agreed else "○" }} The referee agrees to the check</div><div style="padding:3px 0">{{ "✓" if bank_done else "○" }} The referee's bank confirms the account</div></div>{% endif %}
 {% if share %}<div class="card noprint"><h3 class="sec" style="margin-top:0">Send this link to the referee</h3><p class="muted">Fidra doesn't message the referee yet. Share the link by WhatsApp, SMS or email.</p>
 <div class="copy"><input id="lk" value="{{ share }}" readonly><button class="btn alt" type="button" onclick="copyText('lk',this)">Copy</button><a class="btn" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp</a></div></div>{% endif %}
 <div class="g"><div class="card"><h3 class="sec" style="margin-top:0">What was confirmed</h3>

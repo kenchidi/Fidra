@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.database import create_db_and_tables, engine
 from app.models.models import Institution
 from app.services.institution_service import create_institution
+from app.services.reference_service import purge_expired_forms
 from app.api.routes import router as api_router
 from app.api.public import router as public_router
 from app.api.dashboard import router as dashboard_router
@@ -62,6 +63,8 @@ def seed_institutions():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    with Session(engine) as _s:
+        purge_expired_forms(_s)
     if settings.seed_demo_data:
         seed_institutions()
     yield

@@ -5,19 +5,29 @@
 {% if error %}<div class="err">{{ error }}</div>{% endif %}
 <div class="card"><div class="g"><div><div class="muted">Referee's account number</div><div class="mono" style="font-size:20px">{{ r.referee_account_number }}</div></div>
 <div><div class="muted">The referee is vouching for</div><b>{{ r.customer_full_name }}</b> · {{ r.purpose|nice }}</div></div>
-<p class="muted" style="margin:14px 0 0">The referee has {{ "agreed to this check." if r.referee_consent_at else "not agreed yet. Your answer is saved and the reference completes when they do." }}</p></div>
+<p class="muted" style="margin:14px 0 0">{% if signed %}The referee signed a paper form, which {{ by }} uploaded below.{% else %}The referee has {{ "agreed to this check." if r.referee_consent_at else "not agreed yet. Your answer is saved and the reference completes when they do." }}{% endif %}</p></div>
+{% if signed and form_info %}<div class="card"><h3 class="sec" style="margin-top:0">Signed form</h3>
+{% if form_info.removed %}<p class="muted">The form was deleted after the retention period.</p>{% elif form_info.pdf %}<a class="btn alt" href="/app/forms/{{ r.public_id }}">Open the PDF</a>{% else %}<img src="/app/forms/{{ r.public_id }}" alt="Signed form" style="max-width:100%;max-height:460px;border:1px solid var(--line);border-radius:8px">{% endif %}
+<p class="muted" style="margin:10px 0 0">Compare the signature with the specimen you hold. Only you and {{ by }} can open this form.</p></div>{% endif %}
 {% if closed %}<div class="card"><b>This request has already been answered or has closed.</b></div>
+{% elif signed and unclear %}<div class="card"><b>You asked for a clearer copy.</b><p class="muted" style="margin:6px 0 0">It will appear here when {{ by }} sends a new photo or scan.</p></div>
 {% else %}
 <form method="post" class="card"><input type="hidden" name="csrf" value="{{ csrf }}">
-<p style="margin-top:0">Look this account up in your own system, then answer below. Only your answers are shared, not the account's details.</p>
+{% if signed %}<h3 class="sec" style="margin-top:0">Does the signature match your records?</h3>
+<label style="display:flex;gap:8px;color:var(--ink)"><input type="radio" name="signature" value="matches" style="width:auto" onchange="sg()"> Yes, it matches</label>
+<label style="display:flex;gap:8px;color:var(--ink)"><input type="radio" name="signature" value="mismatch" style="width:auto" onchange="sg()"> No, it does not match</label>
+<label style="display:flex;gap:8px;color:var(--ink)"><input type="radio" name="signature" value="unclear" style="width:auto" onchange="sg()"> The photo is unclear. Ask for a clearer copy</label>
+{% else %}<p style="margin-top:0">Look this account up in your own system, then answer below. Only your answers are shared, not the account's details.</p>{% endif %}
+<div id="acct" {% if signed %}style="display:none"{% endif %}>
 <h3 class="sec">Did you find the account?</h3>
 <label style="display:flex;gap:8px;color:var(--ink)"><input type="radio" name="decision" value="confirm" style="width:auto" onchange="sh()"> Yes, I found it</label>
 <label style="display:flex;gap:8px;color:var(--ink)"><input type="radio" name="decision" value="not_found" style="width:auto" onchange="sh()"> No, I can't find this account</label>
 <div id="more" style="display:none">
 <div class="g" style="margin-top:14px"><div><label>Is the account active?</label><select name="account_active"><option value="yes">Yes</option><option value="no">No</option></select></div>
 <div><label>Is the holder in good standing?</label><select name="good_standing"><option value="yes">Yes</option><option value="no">No</option></select></div>
-<div class="full"><label>How long has the account been open?</label><select name="relationship"><option value="">Not sure</option><option value="under_1_year">Under 1 year</option><option value="1-3_years">1 to 3 years</option><option value="3-5_years">3 to 5 years</option><option value="over_5_years">Over 5 years</option></select></div></div></div>
+<div class="full"><label>How long has the account been open?</label><select name="relationship"><option value="">Not sure</option><option value="under_1_year">Under 1 year</option><option value="1-3_years">1 to 3 years</option><option value="3-5_years">3 to 5 years</option><option value="over_5_years">Over 5 years</option></select></div></div></div></div>
 <label style="margin-top:14px">Comment (optional)</label><textarea name="comments" rows="2"></textarea>
 <div style="margin-top:18px"><button class="btn">Send answer</button></div></form>
-<script>function sh(){document.getElementById('more').style.display=document.querySelector('input[name=decision]:checked').value==='confirm'?'block':'none'}</script>
+<script>function sh(){var d=document.querySelector('input[name=decision]:checked');document.getElementById('more').style.display=(d&&d.value==='confirm')?'block':'none'}
+function sg(){var s=document.querySelector('input[name=signature]:checked');document.getElementById('acct').style.display=(s&&s.value==='matches')?'block':'none'}</script>
 {% endif %}{% endblock %}

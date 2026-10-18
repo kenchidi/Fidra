@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Authorize Reference — Fidra{% endblock %}
+{% block title %}Reference request — Fidra{% endblock %}
 
 {% block content %}
 {% if already_done %}
@@ -13,10 +13,8 @@
 {% else %}
   <div class="mb-6">
     <p class="text-sm font-medium text-trust uppercase tracking-wide mb-1">Reference Request</p>
-    <h1 class="text-2xl font-semibold leading-tight">Someone needs your confirmation</h1>
-  {% if req.path == 'path_b' %}
-  <p class="mt-2 text-sm text-trust font-medium">Bank-confirmed reference · Your bank is on the Fidra network</p>
-  {% endif %}
+    <h1 class="text-2xl font-semibold leading-tight">{{ req.customer_full_name }} has named you as a referee</h1>
+    <p class="mt-2 text-slate600">{{ requester }} is asking for a reference for {{ req.purpose.replace('_', ' ') }}.</p>
   </div>
 
   <div class="bg-white rounded-xl border border-slate300 p-5 mb-6 space-y-4">
@@ -27,7 +25,7 @@
     <div class="grid grid-cols-2 gap-4">
       <div>
         <p class="text-xs text-slate600 uppercase tracking-wide">Your Account</p>
-        <p class="font-mono text-sm">{{ req.referee_account_number }}</p>
+        <p class="font-mono text-sm">{{ masked_account }}</p>
       </div>
       <div>
         <p class="text-xs text-slate600 uppercase tracking-wide">Purpose</p>
@@ -36,10 +34,20 @@
     </div>
   </div>
 
+  {% if req.path == 'path_b' %}
+  <div class="bg-white rounded-xl border border-slate300 p-5 mb-6">
+    <p class="font-medium mb-1">If you agree</p>
+    <p class="text-sm text-slate600">{{ responder }} will be asked to confirm that your account exists, is active and is in good standing, and roughly how long it has been open. {{ requester }} will see that confirmation. Nothing else about your account is shared.</p>
+  </div>
+  {% else %}
+  <p class="text-sm text-slate600 mb-6">Your answers below are recorded as your own statement. {{ requester }} is told that no bank has checked them.</p>
+  {% endif %}
+
   <form method="post" action="/r/{{ token }}/authorize" class="space-y-5">
     <div class="bg-white rounded-xl border border-slate300 p-5 space-y-4">
+      {% if req.path != 'path_b' %}
       <div>
-        <label class="block text-sm font-medium mb-2">Is this account in good standing?</label>
+        <label class="block text-sm font-medium mb-2">Is your account in good standing?</label>
         <div class="flex gap-3">
           <label class="flex-1">
             <input type="radio" name="good_standing" value="yes" checked class="peer sr-only">
@@ -57,7 +65,7 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium mb-2">How long have you held this account?</label>
+        <label class="block text-sm font-medium mb-2">How long have you held your account?</label>
         <select name="relationship" class="w-full border border-slate300 rounded-lg px-3 py-2.5 bg-paper focus:outline-none focus:ring-2 focus:ring-trust/30">
           <option value="<1_year">Less than 1 year</option>
           <option value="1-3_years" selected>1 – 3 years</option>
@@ -65,15 +73,16 @@
           <option value="5+_years">5+ years</option>
         </select>
       </div>
+      {% endif %}
 
       <div>
-        <label class="block text-sm font-medium mb-2">Additional comments (optional)</label>
+        <label class="block text-sm font-medium mb-2">{% if req.path == 'path_b' %}A note for {{ requester }} (optional){% else %}Additional comments (optional){% endif %}</label>
         <textarea name="comments" rows="2" class="w-full border border-slate300 rounded-lg px-3 py-2.5 bg-paper focus:outline-none focus:ring-2 focus:ring-trust/30" placeholder="Any extra context…"></textarea>
       </div>
     </div>
 
     <button type="submit" class="w-full bg-trust text-white font-medium py-3.5 rounded-lg hover:bg-trust/90 transition">
-      Authorize Reference
+      {% if req.path == 'path_b' %}I agree{% else %}Confirm reference{% endif %}
     </button>
   </form>
 

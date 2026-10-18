@@ -2,7 +2,7 @@
 {% block body %}
 <h1>New reference request</h1><div class="muted">Fill in the applicant and the referee. It takes about a minute.</div>
 {% if error %}<div class="err">{{ error }}</div>{% endif %}
-<form method="post" class="card"><input type="hidden" name="csrf" value="{{ csrf }}">
+<form method="post" enctype="multipart/form-data" class="card"><input type="hidden" name="csrf" value="{{ csrf }}">
 <h3 class="sec" style="margin-top:0">Applicant</h3>
 <div class="g"><div><label for="n">Full name</label><input id="n" name="customer_full_name" value="{{ form.customer_full_name or '' }}" required></div>
 <div><label for="ph">Phone number</label><input id="ph" name="customer_phone" value="{{ form.customer_phone or '' }}" inputmode="tel"></div>
@@ -14,8 +14,19 @@
 <option value="__other" {{ 'selected' if form.referee_bank=='__other' }}>Another bank (enter its code)</option></select></div>
 <div class="full" id="oc" style="display:none"><label for="o">Bank code</label><input id="o" name="other_bank_code" value="{{ form.other_bank_code or '' }}" inputmode="numeric" placeholder="3 digits, for example 058"></div></div>
 <div id="msg" class="chip info" style="display:none;margin-top:12px;border-radius:8px;padding:9px 12px"></div>
+<div id="how" style="display:none;margin-top:18px">
+<h3 class="sec">How will the referee confirm?</h3>
+<label style="display:flex;gap:8px;color:var(--ink)"><input type="radio" name="confirm_method" value="form" style="width:auto" onchange="howMsg()" {{ 'checked' if form.confirm_method != 'link' }}> Signed bank form (the referee signs the paper form)</label>
+<label style="display:flex;gap:8px;color:var(--ink)"><input type="radio" name="confirm_method" value="link" style="width:auto" onchange="howMsg()" {{ 'checked' if form.confirm_method == 'link' }}> Send a link (the referee has a phone)</label>
+<div id="upl" style="margin-top:12px"><label for="ff">Photo or scan of the signed form (JPG, PNG or PDF, up to 5 MB)</label>
+<input id="ff" type="file" name="form_file" accept="image/jpeg,image/png,application/pdf">
+<label style="display:flex;gap:9px;align-items:center;margin-top:10px;font-size:14px;color:var(--ink)"><input type="checkbox" name="form_checked" value="1" style="width:auto"> I have checked that the form is complete and signed</label></div>
+</div>
 <label style="display:flex;gap:9px;align-items:center;margin:20px 0;font-size:14px;color:var(--ink)"><input type="checkbox" name="consent" value="1" style="width:auto"> The customer has agreed to this reference check</label>
 <button class="btn">Send reference request</button></form>
 <script>function bankMsg(){var s=document.getElementById('b'),m=document.getElementById('msg'),o=s.options[s.selectedIndex];document.getElementById('oc').style.display=s.value==='__other'?'block':'none';
-if(!s.value){m.style.display='none';return}m.style.display='block';m.textContent=(o.dataset.net==='1')?'This bank is on Fidra, so the bank will confirm the account itself.':'This bank is not on Fidra yet. The referee will confirm through a link that you share.'}bankMsg();</script>
+var net=!!s.value&&s.value!=='__other'&&o.dataset.net==='1';document.getElementById('how').style.display=net?'block':'none';
+document.querySelectorAll('#how input').forEach(function(i){i.disabled=!net});howMsg();
+if(!s.value){m.style.display='none';return}m.style.display='block';m.textContent=(o.dataset.net==='1')?'This bank is on Fidra, so the bank will confirm the account itself.':'This bank is not on Fidra yet. The referee will confirm through a link that you share.'}
+function howMsg(){var f=document.querySelector('input[name=confirm_method][value=form]');document.getElementById('upl').style.display=(f&&f.checked&&!f.disabled)?'block':'none'}bankMsg();</script>
 {% endblock %}

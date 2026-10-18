@@ -68,6 +68,13 @@ under Inbox and answer from their own records. Banks with developers can use `GE
 `POST /v1/reference-requests/{public_id}/bank-response` instead. A Path B request completes when the
 bank has answered and the referee has agreed.
 
+**Signed bank forms.** When the referee's bank is on Fidra, the requesting bank's officer can upload a
+photo or scan (JPG, PNG or PDF, up to 5 MB) of the signed reference form instead of sending a link.
+The form appears in the other bank's Inbox, where staff compare the signature with their specimen and
+answer matches, doesn't match, or unclear (which asks for a clearer copy). Only the two banks can open
+the form, every view is logged, and images are deleted after `SIGNED_FORM_RETENTION_DAYS` (default 90).
+API equivalents: `POST` and `GET /v1/reference-requests/{public_id}/signed-form`.
+
 Set `SESSION_SECRET` (any long random string) and `SESSION_HTTPS_ONLY=true` in production.
 
 ## Core API Flow

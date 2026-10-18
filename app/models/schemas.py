@@ -129,6 +129,8 @@ class BankResponseBody(BaseModel):
     good_standing: bool = True
     relationship_length_band: Optional[str] = None
     comments: Optional[str] = None
+    # Only for requests that came with a signed form: matches | mismatch | unclear
+    signature_match: Optional[str] = None
 
 
 class BankResponseResult(BaseModel):
@@ -144,5 +146,13 @@ class InboxItem(BaseModel):
     purpose: str
     requesting_institution: str
     referee_agreed: bool
+    verification_method: str = "referee_link"
+    form_status: Optional[str] = None
     created_at: datetime
     expires_at: Optional[datetime] = None
+
+
+class SignedFormResult(BaseModel):
+    public_id: str
+    status: RequestStatus
+    form_status: Optional[str] = None

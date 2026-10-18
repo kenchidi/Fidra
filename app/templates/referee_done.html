@@ -9,14 +9,19 @@
         <path d="M20 6L9 17l-5-5"/>
       </svg>
     </div>
-    <h1 class="text-xl font-semibold mb-2">Reference authorized</h1>
-    <p class="text-slate600">Thank you. Your response has been securely recorded and sent to the requesting institution.</p>
+    {% if req.path == 'path_b' %}
+    <h1 class="text-xl font-semibold mb-2">Thank you</h1>
+    <p class="text-slate600">{% if req.status.value == 'completed' %}Your agreement has been recorded and the reference has been sent to {{ requester }}.{% else %}Your agreement has been recorded. {{ responder }} will now confirm your account to {{ requester }}.{% endif %}</p>
+    {% else %}
+    <h1 class="text-xl font-semibold mb-2">Reference confirmed</h1>
+    <p class="text-slate600">Thank you. Your response has been securely recorded and sent to {{ requester }}.</p>
+    {% endif %}
   {% else %}
     <div class="w-14 h-14 rounded-full bg-cloud mx-auto flex items-center justify-center mb-5">
       <span class="text-2xl text-slate600">✕</span>
     </div>
     <h1 class="text-xl font-semibold mb-2">Request declined</h1>
-    <p class="text-slate600">You have declined this reference request. The requesting institution has been notified.</p>
+    <p class="text-slate600">You have declined this reference request. {{ requester }} has been notified.</p>
   {% endif %}
 </div>
 {% endblock %}

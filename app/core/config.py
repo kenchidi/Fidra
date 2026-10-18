@@ -21,6 +21,9 @@ class Settings(BaseSettings):
 
     token_expire_days: int = 7
 
+    # Signed reference forms uploaded by the requesting bank are deleted after this many days.
+    signed_form_retention_days: int = 90
+
     # Staff dashboard sessions. Set SESSION_SECRET in production so logins survive restarts.
     session_secret: str = ""
     session_https_only: bool = False   # set true on Render (HTTPS)

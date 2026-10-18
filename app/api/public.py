@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app.core.database import get_session
 from app.services import reference_service as svc
+from app.models.models import Institution
 from app.models.schemas import ResponsePayload
 
 router = APIRouter()
@@ -35,6 +36,7 @@ def referee_page(token: str, request: Request, session: Session = Depends(get_se
         request=request,
         req=req,
         token=token,
+        **_names(session, req),
         already_done=req.status.value in ("completed", "declined", "expired", "cancelled"),
     )
 
@@ -65,6 +67,7 @@ def referee_authorize(
         request=request,
         req=req,
         action="authorized",
+        **_names(session, req),
     )
 
 
@@ -83,7 +86,21 @@ def referee_decline(
         request=request,
         req=req,
         action="declined",
+        **_names(session, req),
     )
+
+
+# ---------- helpers for the referee pages ----------
+
+def _names(session: Session, req) -> dict:
+    requester = session.get(Institution, req.requesting_institution_id)
+    responder = session.get(Institution, req.responding_institution_id) if req.responding_institution_id else None
+    acct = req.referee_account_number or ""
+    return {
+        "requester": requester.name if requester else "the requesting institution",
+        "responder": responder.name if responder else "your bank",
+        "masked_account": "\u2022" * max(len(acct) - 4, 0) + acct[-4:],
+    }
 
 
 # ---------- Customer status page ----------

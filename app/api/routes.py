@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import Response
 from sqlmodel import Session, select
 from typing import List
 
@@ -11,6 +12,7 @@ from app.models.schemas import (
     BankResponseBody,
     BankResponseResult,
     InboxItem,
+    SignedFormResult,
     StaffOut,
     ReferenceRequestOut,
     ReferenceRequestDetail,
@@ -221,7 +223,8 @@ def inbox(
             public_id=r.public_id, customer_full_name=r.customer_full_name,
             referee_account_number=r.referee_account_number, purpose=r.purpose,
             requesting_institution=requester.name if requester else "",
-            referee_agreed=bool(r.referee_consent_at), created_at=r.created_at, expires_at=r.expires_at,
+            referee_agreed=bool(r.referee_consent_at), verification_method=r.verification_method,
+            form_status=r.form_status, created_at=r.created_at, expires_at=r.expires_at,
         ))
     return out
 
@@ -237,3 +240,37 @@ def bank_response(
     req = svc.get_request_by_public_id(session, public_id)
     req = svc.submit_bank_response(session, req, institution, body)
     return BankResponseResult(public_id=req.public_id, status=req.status, assurance_level=req.assurance_level)
+
+
+@router.post("/reference-requests/{public_id}/signed-form", response_model=SignedFormResult, tags=["Signed forms"])
+def upload_signed_form(
+    public_id: str,
+    file: UploadFile = File(...),
+    institution: Institution = Depends(get_current_institution),
+    session: Session = Depends(get_session),
+):
+    """Attach the signed bank reference form (JPG, PNG or PDF, up to 5 MB) to a request whose
+    referee's bank is on Fidra. Send it again to replace an unclear copy."""
+    req = svc.get_request_by_public_id(session, public_id)
+    data = file.file.read(svc.MAX_FORM_BYTES + 1)
+    svc.attach_signed_form(session, req, institution, file.filename or "signed-form", data)
+    return SignedFormResult(public_id=req.public_id, status=req.status, form_status=req.form_status)
+
+
+@router.get(
+    "/reference-requests/{public_id}/signed-form",
+    tags=["Signed forms"],
+    response_class=Response,
+    responses={200: {"content": {"image/jpeg": {}, "image/png": {}, "application/pdf": {}}}},
+)
+def download_signed_form(
+    public_id: str,
+    institution: Institution = Depends(get_current_institution),
+    session: Session = Depends(get_session),
+):
+    """Download the signed form. Only the requesting bank and the referee's bank can open it, and every view is logged."""
+    req = svc.get_request_by_public_id(session, public_id)
+    form = svc.get_signed_form(session, req, institution)
+    return Response(content=form.data, media_type=form.content_type,
+                    headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+                             "Content-Disposition": f'attachment; filename="signed-form-{public_id}"'})

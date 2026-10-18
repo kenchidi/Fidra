@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
+from sqlalchemy import LargeBinary
 from sqlmodel import SQLModel, Field, Column, JSON
 import hashlib
 import secrets
@@ -100,6 +101,10 @@ class ReferenceRequest(SQLModel, table=True):
     referee_answer: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     bank_answer: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
+    # How the referee gave consent: "referee_link" or "signed_form" (a signed bank form uploaded by the requesting bank)
+    verification_method: str = "referee_link"
+    form_status: Optional[str] = None  # None | "submitted" | "unclear"
+
 
 class StaffUser(SQLModel, table=True):
     """A person at an institution who signs in to the Fidra dashboard."""
@@ -122,3 +127,27 @@ class StatusEvent(SQLModel, table=True):
     actor: str = "system"
     note: Optional[str] = None
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class SignedForm(SQLModel, table=True):
+    """A scan or photo of the signed bank reference form. Deleted after the retention period."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    request_id: int = Field(foreign_key="referencerequest.id", index=True)
+    filename: str
+    content_type: str
+    size: int
+    data: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
+    uploaded_by_institution_id: int
+    uploaded_by_staff_id: Optional[int] = None
+    uploaded_at: datetime = Field(default_factory=utcnow)
+    delete_after: datetime
+    deleted_at: Optional[datetime] = None
+
+
+class FormViewLog(SQLModel, table=True):
+    """Who opened a signed form, and when."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    form_id: int = Field(index=True)
+    institution_id: int
+    staff_id: Optional[int] = None
+    viewed_at: datetime = Field(default_factory=utcnow)

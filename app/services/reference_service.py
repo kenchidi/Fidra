@@ -4,6 +4,8 @@ from sqlmodel import Session, select
 from fastapi import HTTPException
 
 from app.models.models import (
+    SignedForm,
+    FormViewLog,
     ReferenceRequest, StatusEvent, Institution, RequestStatus, AssuranceLevel, utcnow
 )
 from app.models.schemas import CreateReferenceRequest, ResponsePayload
@@ -238,6 +240,8 @@ def _maybe_complete_path_b(session: Session, req: ReferenceRequest, responding: 
         "additional_comments": ref.get("additional_comments"),
         "bank_comments": bank.get("comments"),
         "referee_agreed": True,
+        "verification_method": req.verification_method,
+        "signature_match": bank.get("signature_match"),
         "responded_by": responding.code if responding else None,
         "responded_by_name": name,
         "assurance_level": AssuranceLevel.bank_confirmed.value,
@@ -258,6 +262,34 @@ def submit_bank_response(session: Session, req: ReferenceRequest, institution: I
     if req.expires_at and req.expires_at < utcnow():
         raise HTTPException(status_code=400, detail="This request has expired")
 
+    signed = req.verification_method == "signed_form"
+    sig = body.signature_match if signed else None
+    if signed:
+        if sig not in ("matches", "mismatch", "unclear"):
+            raise HTTPException(status_code=422, detail="This request came with a signed form. Set signature_match to matches, mismatch or unclear.")
+        if sig != "unclear" and req.form_status == "unclear":
+            raise HTTPException(status_code=400, detail="You asked for a clearer copy of the form. Wait for the new copy before answering.")
+        if sig == "unclear":
+            req.form_status = "unclear"
+            _log_status(session, req, req.status, actor="bank", note=f"{institution.name} asked for a clearer copy of the form")
+            session.commit()
+            session.refresh(req)
+            return req
+        if sig == "mismatch":
+            req.response_payload = {
+                "signature_match": "mismatch",
+                "verification_method": "signed_form",
+                "responded_by": institution.code,
+                "responded_by_name": institution.name,
+                "assurance_level": AssuranceLevel.bank_confirmed.value,
+                "confirmation_type": "bank_confirmed",
+            }
+            req.completed_at = utcnow()
+            _log_status(session, req, RequestStatus.failed, actor="bank", note=f"Signature did not match at {institution.name}")
+            session.commit()
+            session.refresh(req)
+            return req
+
     if not body.account_exists:
         req.response_payload = {
             "account_exists": False,
@@ -276,6 +308,7 @@ def submit_bank_response(session: Session, req: ReferenceRequest, institution: I
             "good_standing": body.good_standing,
             "relationship_length_band": body.relationship_length_band,
             "comments": body.comments,
+            "signature_match": sig,
         }
         _log_status(session, req, req.status, actor="bank", note=f"{institution.name} confirmed the account")
         _maybe_complete_path_b(session, req, institution)
@@ -297,3 +330,94 @@ def pending_for_bank(session: Session, institution_id: int):
     ).all()
     now = utcnow()
     return [r for r in rows if not (r.expires_at and r.expires_at < now)]
+
+
+# ---------------- signed bank forms ----------------
+MAX_FORM_BYTES = 5 * 1024 * 1024
+
+
+def _sniff(data: bytes) -> Optional[str]:
+    """Decide the file type from its first bytes, never from the name the uploader gave."""
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:5] == b"%PDF-":
+        return "application/pdf"
+    return None
+
+
+def validate_form_bytes(data: bytes) -> str:
+    if not data:
+        raise HTTPException(status_code=400, detail="No file was received.")
+    if len(data) > MAX_FORM_BYTES:
+        raise HTTPException(status_code=413, detail="The file is too large. The limit is 5 MB.")
+    ctype = _sniff(data)
+    if not ctype:
+        raise HTTPException(status_code=400, detail="Upload a JPG, PNG or PDF of the signed form.")
+    return ctype
+
+
+def attach_signed_form(session: Session, req: ReferenceRequest, institution: Institution, filename: str, data: bytes, staff_id: Optional[int] = None):
+    """The requesting bank attaches the signed form. The signed form stands in for the referee's link."""
+    if req.requesting_institution_id != institution.id:
+        raise HTTPException(status_code=404, detail="Reference request not found")
+    if req.path != "path_b":
+        raise HTTPException(status_code=400, detail="The referee's bank is not on Fidra, so a signed form cannot be sent. Use the referee link instead.")
+    if req.status != RequestStatus.pending_bank_confirmation:
+        raise HTTPException(status_code=400, detail=f"This request is no longer waiting for the bank (status: {req.status.value})")
+    if req.expires_at and req.expires_at < utcnow():
+        raise HTTPException(status_code=400, detail="This request has expired")
+    ctype = validate_form_bytes(data)
+
+    for old in session.exec(select(SignedForm).where(SignedForm.request_id == req.id)).all():
+        session.delete(old)
+    now = utcnow()
+    form = SignedForm(
+        request_id=req.id, filename=(filename or "signed-form")[:120], content_type=ctype, size=len(data), data=data,
+        uploaded_by_institution_id=institution.id, uploaded_by_staff_id=staff_id, uploaded_at=now,
+        delete_after=now + timedelta(days=get_settings().signed_form_retention_days),
+    )
+    session.add(form)
+    first = req.verification_method != "signed_form"
+    req.verification_method = "signed_form"
+    req.form_status = "submitted"
+    if not req.referee_consent_at:
+        req.referee_consent_at = now  # the referee's signature on the form is their consent
+    _log_status(session, req, req.status, actor="requester",
+                note="Signed form uploaded" if first else "New copy of the signed form uploaded")
+    session.commit()
+    session.refresh(req)
+    return form
+
+
+def latest_form(session: Session, req: ReferenceRequest) -> Optional[SignedForm]:
+    return session.exec(
+        select(SignedForm).where(SignedForm.request_id == req.id).order_by(SignedForm.uploaded_at.desc())
+    ).first()
+
+
+def get_signed_form(session: Session, req: ReferenceRequest, institution: Institution, staff_id: Optional[int] = None):
+    """Only the two banks on the request can open the form. Every view is logged."""
+    if institution.id not in (req.requesting_institution_id, req.responding_institution_id):
+        raise HTTPException(status_code=404, detail="Reference request not found")
+    form = latest_form(session, req)
+    if not form:
+        raise HTTPException(status_code=404, detail="No signed form on this request")
+    if form.data is None:
+        raise HTTPException(status_code=410, detail="This form was deleted after the retention period.")
+    session.add(FormViewLog(form_id=form.id, institution_id=institution.id, staff_id=staff_id))
+    session.commit()
+    return form
+
+
+def purge_expired_forms(session: Session) -> int:
+    """Delete form images past their retention date. The record that a form existed is kept."""
+    now = utcnow()
+    rows = session.exec(select(SignedForm).where(SignedForm.data != None, SignedForm.delete_after < now)).all()  # noqa: E711
+    for f in rows:
+        f.data = None
+        f.deleted_at = now
+    if rows:
+        session.commit()
+    return len(rows)

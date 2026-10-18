@@ -105,7 +105,7 @@ function flow(sc){const all=(sc.RequestStatus&&sc.RequestStatus.enum)||[],has=x=
  return`<p style="margin:14px 0 4px"><b>Path A</b> · the referee confirms through a link (self-attested)</p>${row(A)}<p style="margin:14px 0 4px"><b>Path B</b> · the referee's bank is on the network and confirms the account</p>${row(B)}<p style="color:var(--mu);margin:14px 0 4px">Either path can also end as:</p><div class="flow x">${out.map(x=>`<span class="n chip ${tone(x)}"><i></i>${x}</span>`).join('')}</div>`}
 
 function op(o){
- const all=o.parameters||[],prm=all.filter(x=>x.name!=='X-API-Key'),hdrs=prm.filter(x=>x.in==='header'),keyed=all.length!==prm.length,hosted=o.tag==='Public',rb=o.requestBody&&o.requestBody.content,ct=rb&&Object.keys(rb)[0],bs=rb&&rb[ct].schema,body=bs?ex(bs):null,form=ct&&ct.includes('urlencoded');
+ const all=o.parameters||[],prm=all.filter(x=>x.name!=='X-API-Key'),hdrs=prm.filter(x=>x.in==='header'),keyed=all.length!==prm.length,hosted=o.tag==='Public',rb=o.requestBody&&o.requestBody.content,ct=rb&&Object.keys(rb)[0],bs=rb&&rb[ct].schema,multi=ct&&ct.includes('multipart'),body=bs&&!multi?ex(bs):null,form=ct&&ct.includes('urlencoded');
  const resp=Object.entries(o.responses||{}).filter(([c])=>c!=='422'),ok=resp.find(([c])=>c[0]==='2'),okct=ok&&Object.keys(ok[1].content||{})[0],html=okct==='text/html';
  const V=o.v.toUpperCase(),u=BASE+o.p,hdr={};
  if(keyed)hdr['X-API-Key']='YOUR_API_KEY';hdrs.forEach(x=>hdr[x.name]='YOUR_'+x.name.toUpperCase().replace(/-/g,'_'));if(ct)hdr['Content-Type']=ct;
@@ -113,14 +113,17 @@ function op(o){
  const curl=`curl -X ${V} "${u}"`+Object.entries(hdr).map(([k,v])=>` \\\n  -H "${k}: ${v}"`).join('')+(body?(form?` \\\n  -d "${new URLSearchParams(body)}"`:` \\\n  -d '${JSON.stringify(body,null,2)}'`):'');
  const pyc=`import requests\n\nr = requests.${o.v}(\n    "${u}",`+(hk?`\n    headers=${py(hdr)},`:'')+(body?`\n    ${form?'data':'json'}=${py(body)},`:'')+`\n)\nprint(r.status_code, r.text)`;
  const jsc=`const r = await fetch("${u}", {\n  method: "${V}",`+(hk?`\n  headers: ${JSON.stringify(hdr)},`:'')+(body?`\n  body: ${form?`new URLSearchParams(${JSON.stringify(body)})`:`JSON.stringify(${JSON.stringify(body)})`},`:'')+`\n});\nconsole.log(await r.${html?'text':'json'}());`;
+ const hk2=keyed?` \\\n  -H "X-API-Key: YOUR_API_KEY"`:'',curlM=`curl -X ${V} "${u}"${hk2} \\\n  -F "file=@signed-form.jpg"`,
+ pyM=`import requests\n\nr = requests.${o.v}(\n    "${u}",\n    headers=${py(hdr)},\n    files={"file": open("signed-form.jpg", "rb")},\n)\nprint(r.status_code, r.text)`,
+ jsM=`const fd = new FormData();\nfd.append("file", fileInput.files[0]);\nconst r = await fetch("${u}", {\n  method: "${V}",\n  headers: ${JSON.stringify(hdr)},\n  body: fd,\n});\nconsole.log(await r.json());`;
  const rt=r=>{const k=Object.keys(r.content||{})[0];return k?k+' → '+tstr(r.content[k].schema):'—'};
  const exm=ok&&okct==='application/json'&&ok[1].content[okct].schema&&Object.keys(ok[1].content[okct].schema).length?`<details open><summary>Example response</summary><pre class="ex">${esc(JSON.stringify(exr(ok[1].content[okct].schema),null,2))}</pre></details>`:'';
  const left=`<div class="l"><div class="oh"><span class="m ${V}">${V}</span><code>${esc(o.p)}</code>${keyed?'<a class="keyb" href="#auth">API key</a>':''}</div><h3>${esc(o.summary||'')}</h3>${hosted?`<p class="d">${esc(HD[V+' '+o.p]||'')}</p>`:''}
  ${prm.length?'<table><tr><th>Parameter<th>In<th>Type<th>'+prm.map(x=>`<tr><td class=mono>${x.name}<td>${x.in}<td><code>${esc(tstr(x.schema))}</code><td>${x.required?'<span class=req>required</span>':'optional'}`).join('')+'</table>':''}
  ${bs?`<p style="margin:8px 0 0;color:var(--mu)">Request body · <code>${ct}</code></p>`+props(bs):''}
  ${hosted?'':`<table><tr><th>Response<th>Returns${resp.map(([c,r])=>`<tr><td><span class="chip ${c[0]==='2'?'ok':'bad'}">${c}</span><td><code>${esc(rt(r))}</code>`).join('')}</table>`+exm}</div>`;
- const right=hosted?'':`<div class="r"><div class="code"><div class="tabs"><button class="on" data-l="0">curl</button><button data-l="1">Python</button><button data-l="2">JavaScript</button><button class="cp">Copy</button></div><pre>${esc(curl)}</pre><pre hidden>${esc(pyc)}</pre><pre hidden>${esc(jsc)}</pre></div>
- <details class="try" data-id="${o.operationId}" open><summary>Try it</summary>
+ const right=hosted?'':`<div class="r"><div class="code"><div class="tabs"><button class="on" data-l="0">curl</button><button data-l="1">Python</button><button data-l="2">JavaScript</button><button class="cp">Copy</button></div><pre>${esc(multi?curlM:curl)}</pre><pre hidden>${esc(multi?pyM:pyc)}</pre><pre hidden>${esc(multi?jsM:jsc)}</pre></div>
+ ${multi?'<p class="muted" style="margin-top:14px">File uploads cannot be tried on this page. Use the curl example above.</p>':''}<details class="try" data-id="${o.operationId}" ${multi?'hidden':'open'}><summary>Try it</summary>
  ${prm.filter(x=>x.in==='path').map(x=>`<label>${x.name}<input data-path="${x.name}" placeholder="${x.name}"></label>`).join('')}${hdrs.map(x=>`<label>${x.name}<input type="password" data-hdr="${x.name}" placeholder="${x.name}"></label>`).join('')}
  ${body?`<label>Request body (${ct})</label><textarea rows="${Math.min(12,JSON.stringify(body,null,2).split('\n').length+1)}">${esc(JSON.stringify(body,null,2))}</textarea>`:''}
  <button class="send">Send request</button><div class="res"></div></details></div>`;
