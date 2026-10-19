@@ -5,6 +5,7 @@
 {% if error %}<div class="err">{{ error }}</div>{% endif %}
 <div class="card"><div class="g"><div><div class="muted">Referee's account number</div><div class="mono" style="font-size:20px">{{ r.referee_account_number }}</div></div>
 <div><div class="muted">The referee is vouching for</div><b>{{ r.customer_full_name }}</b> · {{ r.purpose|nice }}</div></div>
+{% if r.reminder_count %}<p style="margin:12px 0 0"><span class="chip warn">{{ by }} has sent {{ r.reminder_count }} reminder{{ 's' if r.reminder_count > 1 }}</span></p>{% endif %}
 <p class="muted" style="margin:14px 0 0">{% if signed %}The referee signed a paper form, which {{ by }} uploaded below.{% else %}The referee has {{ "agreed to this check." if r.referee_consent_at else "not agreed yet. Your answer is saved and the reference completes when they do." }}{% endif %}</p></div>
 {% if signed and form_info %}<div class="card"><h3 class="sec" style="margin-top:0">Signed form</h3>
 {% if form_info.removed %}<p class="muted">The form was deleted after the retention period.</p>{% elif form_info.pdf %}<a class="btn alt" href="/app/forms/{{ r.public_id }}">Open the PDF</a>{% else %}<img src="/app/forms/{{ r.public_id }}" alt="Signed form" style="max-width:100%;max-height:460px;border:1px solid var(--line);border-radius:8px">{% endif %}

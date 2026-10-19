@@ -75,6 +75,13 @@ answer matches, doesn't match, or unclear (which asks for a clearer copy). Only 
 the form, every view is logged, and images are deleted after `SIGNED_FORM_RETENTION_DAYS` (default 90).
 API equivalents: `POST` and `GET /v1/reference-requests/{public_id}/signed-form`.
 
+**Keeping the load off banks.** Requests are checked before they reach another bank: the referee's account
+must be 10 digits, the bank code 3 to 6 digits, and an identical open request is refused. Each institution
+can send up to `DAILY_REQUEST_LIMIT` requests per 24 hours (default 200, 0 turns it off). A Path B request is
+due `BANK_RESPONSE_HOURS` after it is sent (default 48), the inbox lists overdue items first, and the asking bank can
+send one in-app reminder per `REMINDER_COOLDOWN_HOURS` (default 12). Supervisors and admins get an Insights page.
+Reminders are shown in the bank's Inbox. Fidra does not send email or SMS yet.
+
 Set `SESSION_SECRET` (any long random string) and `SESSION_HTTPS_ONLY=true` in production.
 
 ## Core API Flow

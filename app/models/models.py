@@ -105,6 +105,11 @@ class ReferenceRequest(SQLModel, table=True):
     verification_method: str = "referee_link"
     form_status: Optional[str] = None  # None | "submitted" | "unclear"
 
+    # Path B workload controls
+    bank_due_at: Optional[datetime] = None
+    last_reminder_at: Optional[datetime] = None
+    reminder_count: int = 0
+
 
 class StaffUser(SQLModel, table=True):
     """A person at an institution who signs in to the Fidra dashboard."""

@@ -1,0 +1,18 @@
+{% extends "dash_base.html" %}{% block title %}Insights · Fidra{% endblock %}
+{% block body %}
+<h1>Insights</h1><div class="muted">The last {{ data.days }} days at {{ staff.institution }}.</div>
+<h3 class="sec" style="margin-top:24px">When we ask other banks</h3>
+<div class="g" style="grid-template-columns:repeat(4,1fr)">
+<div class="card" style="margin:0"><div class="muted">Requests sent</div><h2>{{ data.asking.sent }}</h2></div>
+<div class="card" style="margin:0"><div class="muted">Completed</div><h2>{{ data.asking.completed }}</h2>{% if data.asking.completion_rate is not none %}<div class="muted">{{ (data.asking.completion_rate * 100)|round|int }}% of those finished</div>{% endif %}</div>
+<div class="card" style="margin:0"><div class="muted">Typical time to complete</div><h2 style="font-size:20px">{{ data.asking.median_hours|hrs }}</h2></div>
+<div class="card" style="margin:0"><div class="muted">Waiting past the deadline</div><h2 style="color:{{ 'var(--green)' if not data.asking.overdue else '#8E2A24' }}">{{ data.asking.overdue }}</h2></div></div>
+<h3 class="sec" style="margin-top:28px">When other banks ask us</h3>
+<div class="g" style="grid-template-columns:repeat(4,1fr)">
+<div class="card" style="margin:0"><div class="muted">Received</div><h2>{{ data.answering.received }}</h2></div>
+<div class="card" style="margin:0"><div class="muted">Answered</div><h2>{{ data.answering.answered }}</h2></div>
+<div class="card" style="margin:0"><div class="muted">Typical time to answer</div><h2 style="font-size:20px">{{ data.answering.median_hours|hrs }}</h2></div>
+<div class="card" style="margin:0"><div class="muted">Waiting now</div><h2>{{ data.answering.waiting }}</h2>{% if data.answering.overdue %}<div><span class="chip bad">{{ data.answering.overdue }} overdue</span></div>{% endif %}</div></div>
+{% if data.answering.unclear %}<p class="muted" style="margin-top:16px">Your staff asked for a clearer copy of a signed form {{ data.answering.unclear }} time{{ 's' if data.answering.unclear > 1 }}.</p>{% endif %}
+<p class="muted" style="margin-top:20px">Times are measured from when a request is sent to the first answer or completion. These numbers are for your own team and are not shared with other banks.</p>
+{% endblock %}

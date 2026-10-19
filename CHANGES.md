@@ -16,6 +16,7 @@ Replace the files listed below in your repo (same paths), then set the environme
 - app/services/reference_service.py     self-attested responses carry "account_verified": false
 - app/api/routes.py (also: GET /v1/inbox, POST /v1/reference-requests/{id}/bank-response)
 - app/api/public.py, app/templates/referee.html, app/templates/referee_done.html   referee page reworked (see below)
+- app/templates/dash_insights.html   NEW
 - app/templates/dash_new.html, dash_detail.html, dash_inbox.html, dash_inbox_detail.html   (updated for signed forms)
 - app/templates/dash_inbox.html, dash_inbox_detail.html, dash_account.html, dash_team.html   NEW
 - app/services/mock_bank.py  DELETE this file from your repo (no longer used)
@@ -63,6 +64,15 @@ When the referee's bank is on Fidra, the requesting bank's officer chooses "Sign
 - Storage: images are kept in the database for the pilot. Use Postgres, because Render's free app disk is wiped on restart. Render's free Postgres expires after a limited period, so check that before real use.
 - New tables: signedform, formviewlog. New columns on referencerequest: verification_method, form_status. Start from a fresh database.
 - Not covered: a second check on who signed (for example a call or code to the number the bank holds), and printing a bank's own form template inside Fidra.
+
+## Update: reducing the workload on banks (new)
+- Checks before a request is accepted (screens and API): the referee's account number must be exactly 10 digits and the bank code 3 to 6 digits; an identical open request (same applicant, referee account and bank) is refused and the existing request id is returned. API clients that sent other formats will now get a 422, so tell any developers using the API.
+- Daily limit per institution (DAILY_REQUEST_LIMIT, default 200; 0 turns it off).
+- Response deadline for Path B (BANK_RESPONSE_HOURS, default 48). The requester sees the deadline; the responding bank's inbox shows "Due in..." or "Overdue by..." and lists overdue and soonest-due items first.
+- In-app reminders: the asking bank can press "Remind the bank" once per REMINDER_COOLDOWN_HOURS (default 12). The bank sees "Reminded" in its inbox. API: POST /v1/reference-requests/{public_id}/remind. This does not send email or SMS.
+- Insights page (supervisors and admins): requests sent, completed, typical time to complete and requests past their deadline when asking; received, answered, typical time to answer, waiting now and overdue when answering. Numbers are for the bank's own team only.
+- New columns on referencerequest (bank_due_at, last_reminder_at, reminder_count). Start from a fresh database.
+- Deliberately not built: answering many requests in one click. It invites rubber-stamping, which is the weakness Fidra is meant to fix.
 
 ## Important
 - The institution table changed (api_key -> api_key_hash). Existing databases are not migrated. Start from a fresh database, then recreate institutions through the admin endpoint.

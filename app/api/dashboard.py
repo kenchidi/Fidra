@@ -10,9 +10,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlmodel import Session, select
 
+from app.core.config import get_settings
 from app.core.database import get_session
 from app.core.security import hash_password, verify_password
-from app.models.models import Institution, ReferenceRequest, RequestStatus, StaffUser
+from app.models.models import Institution, ReferenceRequest, RequestStatus, StaffUser, utcnow
 from app.models.schemas import BankResponseBody, CreateReferenceRequest
 from app.services import reference_service as svc
 
@@ -29,6 +30,17 @@ def _wat(dt):
 
 
 _env.filters["wat"] = _wat
+def _hrs(h):
+    if h is None:
+        return "no data yet"
+    if h < 1:
+        return "under 1 hour"
+    if h < 48:
+        return f"{h:.1f}".rstrip("0").rstrip(".") + (" hour" if round(h, 1) == 1 else " hours")
+    return f"{h / 24:.1f}".rstrip("0").rstrip(".") + " days"
+
+
+_env.filters["hrs"] = _hrs
 _env.filters["nice"] = lambda v: str(v or "").replace("_", " ").capitalize()
 
 _FAILS: dict = {}  # login throttle: key -> [timestamps]
@@ -92,8 +104,22 @@ EVENT_LABELS = {
 }
 
 
+def due_label(r: ReferenceRequest):
+    """Short text and colour for how close a Path B request is to its deadline."""
+    if not r.bank_due_at:
+        return None
+    secs = (r.bank_due_at - utcnow()).total_seconds()
+    h = int(abs(secs) // 3600)
+    span = f"{h // 24} days" if h >= 48 else (f"{h}h" if h >= 1 else "under 1h")
+    if secs < 0:
+        return {"text": f"Overdue by {span}", "tone": "bad", "overdue": True}
+    return {"text": f"Due in {span}", "tone": "warn" if h < 12 else "neu", "overdue": False}
+
+
 def event_label(e) -> str:
     note = e.note or ""
+    if note.startswith("Reminder sent"):
+        return "Reminder sent to the bank"
     if note.startswith("Signed form uploaded"):
         return "Signed form sent to the referee's bank"
     if note.startswith("New copy"):
@@ -275,14 +301,18 @@ def new_submit(
     inst = session.get(Institution, staff.institution_id)
     body = CreateReferenceRequest(customer_full_name=customer_full_name.strip(), customer_phone=customer_phone.strip() or None,
                                   referee_account_number=acct, referee_bank_code=bank_code, purpose=purpose, consent_given=True)
-    req = svc.create_reference_request(session, body, inst, base_url=str(request.base_url).rstrip("/"))
+    try:
+        req = svc.create_reference_request(session, body, inst, base_url=str(request.base_url).rstrip("/"))
+    except HTTPException as e:
+        return page("dash_new.html", request, e.status_code, banks=_bank_options(session), form=form, error=str(e.detail),
+                    **ctx_for(staff, session, "new"))
     if use_form:
         svc.attach_signed_form(session, req, inst, form_file.filename, data, staff_id=staff.id)
     return RedirectResponse(f"/app/requests/{req.public_id}", status_code=303)
 
 
 @router.get("/requests/{public_id}", response_class=HTMLResponse)
-def detail(public_id: str, request: Request, print: int = 0, err: str = "", staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
+def detail(public_id: str, request: Request, print: int = 0, err: str = "", ok: str = "", staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
     req = session.exec(select(ReferenceRequest).where(ReferenceRequest.public_id == public_id)).first()
     if not req or req.requesting_institution_id != staff.institution_id:
         raise HTTPException(status_code=404, detail="Request not found")
@@ -304,7 +334,9 @@ def detail(public_id: str, request: Request, print: int = 0, err: str = "", staf
                 share=(link if waiting else None), wa=wa,
                 is_b=req.path == "path_b", agreed=bool(req.referee_consent_at), bank_done=bool(req.bank_answer),
                 signed=req.verification_method == "signed_form", unclear=req.form_status == "unclear",
-                form_info=_form_info(session, req), form_error=err[:200], responder=_responder_name(session, req),
+                form_info=_form_info(session, req), form_error=err[:200], ok_msg=ok[:200], responder=_responder_name(session, req),
+                due=due_label(req) if s == "pending_bank_confirmation" else None, reminded=req.last_reminder_at,
+                can_remind=s == "pending_bank_confirmation" and (not req.last_reminder_at or utcnow() - req.last_reminder_at >= timedelta(hours=get_settings().reminder_cooldown_hours)),
                 customer_link=f"{base}/c/{req.customer_token}", **ctx_for(staff, session, "list"))
 
 
@@ -323,8 +355,10 @@ def inbox_list(request: Request, done: int = 0, staff: StaffUser = Depends(curre
         by = session.get(Institution, r.requesting_institution_id)
         rows.append({"id": r.public_id, "name": r.customer_full_name, "by": by.name if by else "", "account": r.referee_account_number,
                      "agreed": bool(r.referee_consent_at), "created": r.created_at,
-                     "form": r.verification_method == "signed_form", "unclear": r.form_status == "unclear"})
-    return page("dash_inbox.html", request, rows=rows, done=bool(done), **ctx_for(staff, session, "inbox"))
+                     "form": r.verification_method == "signed_form", "unclear": r.form_status == "unclear",
+                     "due": due_label(r), "reminders": r.reminder_count})
+    overdue = sum(1 for x in rows if x["due"] and x["due"]["overdue"])
+    return page("dash_inbox.html", request, rows=rows, done=bool(done), overdue=overdue, **ctx_for(staff, session, "inbox"))
 
 
 def _inbox_page(request, staff, session, req, status_code=200, error=None):
@@ -507,3 +541,29 @@ def team_reset(uid: int, request: Request, password: str = Form(""), csrf_token:
     session.add(m)
     session.commit()
     return _team_page(request, staff, session, ok=f"New temporary password set for {m.full_name}. They must change it when they sign in.")
+
+
+# ---------------- reminders and insights
+@router.post("/requests/{public_id}/remind")
+def remind(public_id: str, request: Request, csrf_token: str = Form("", alias="csrf"),
+           staff: StaffUser = Depends(current_staff), session: Session = Depends(get_session)):
+    check_csrf(request, csrf_token)
+    req = session.exec(select(ReferenceRequest).where(ReferenceRequest.public_id == public_id)).first()
+    if not req or req.requesting_institution_id != staff.institution_id:
+        raise HTTPException(status_code=404, detail="Request not found")
+    try:
+        svc.remind_bank(session, req, session.get(Institution, staff.institution_id))
+    except HTTPException as e:
+        return RedirectResponse(f"/app/requests/{public_id}?err={quote(str(e.detail))}", status_code=303)
+    return RedirectResponse(f"/app/requests/{public_id}?ok={quote('Reminder sent. The bank will see it in its inbox.')}", status_code=303)
+
+
+def lead_required(staff: StaffUser = Depends(current_staff)) -> StaffUser:
+    if staff.role not in ("admin", "supervisor"):
+        raise HTTPException(status_code=403, detail="Only supervisors and administrators can see the numbers.")
+    return staff
+
+
+@router.get("/insights", response_class=HTMLResponse)
+def insights_page(request: Request, staff: StaffUser = Depends(lead_required), session: Session = Depends(get_session)):
+    return page("dash_insights.html", request, data=svc.insights(session, staff.institution_id), **ctx_for(staff, session, "insights"))

@@ -27,7 +27,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;font
 </style></head><body>
 <header class="noprint"><div class="w">
 <a class="brand" href="/app/requests"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2FD3A0"/><path d="M22 48V18H44M22 32H36" fill="none" stroke="#0A1F3C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><g fill="#0A1F3C"><circle cx="44" cy="18" r="6"/><circle cx="36" cy="32" r="6"/><circle cx="22" cy="48" r="6"/></g></svg>Fidra</a>
-<nav><a href="/app/requests" class="{{ 'on' if tab=='list' }}">Requests</a><a href="/app/requests/new" class="{{ 'on' if tab=='new' }}">New request</a><a href="/app/inbox" class="{{ 'on' if tab=='inbox' }}">Inbox{% if inbox_count %}<span class="badge">{{ inbox_count }}</span>{% endif %}</a>{% if staff.role=='admin' %}<a href="/app/team" class="{{ 'on' if tab=='team' }}">Team</a>{% endif %}</nav>
+<nav><a href="/app/requests" class="{{ 'on' if tab=='list' }}">Requests</a><a href="/app/requests/new" class="{{ 'on' if tab=='new' }}">New request</a><a href="/app/inbox" class="{{ 'on' if tab=='inbox' }}">Inbox{% if inbox_count %}<span class="badge">{{ inbox_count }}</span>{% endif %}</a>{% if staff.role in ('admin','supervisor') %}<a href="/app/insights" class="{{ 'on' if tab=='insights' }}">Insights</a>{% endif %}{% if staff.role=='admin' %}<a href="/app/team" class="{{ 'on' if tab=='team' }}">Team</a>{% endif %}</nav>
 <span class="sp"></span><a class="who" href="/app/account" title="Your account">{{ staff.full_name }} · {{ staff.institution }}</a>
 <form method="post" action="/app/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="lnk">Sign out</button></form>
 </div></header>

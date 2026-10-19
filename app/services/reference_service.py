@@ -1,6 +1,7 @@
 from datetime import timedelta
 from typing import Optional
-from sqlmodel import Session, select
+from statistics import median
+from sqlmodel import Session, select, func
 from fastapi import HTTPException
 
 from app.models.models import (
@@ -34,12 +35,56 @@ def _log_status(
     session.add(request)
 
 
+OPEN_STATUSES = (
+    RequestStatus.draft, RequestStatus.pending_consent, RequestStatus.submitted, RequestStatus.referee_notified,
+    RequestStatus.referee_viewed, RequestStatus.pending_bank_confirmation,
+)
+
+
+def precheck_request(session: Session, data: CreateReferenceRequest, institution: Institution) -> None:
+    """Reject bad requests before they reach another bank's inbox."""
+    acct = (data.referee_account_number or "").strip()
+    code = (data.referee_bank_code or "").strip()
+    name = (data.customer_full_name or "").strip()
+    if not (acct.isdigit() and len(acct) == 10):
+        raise HTTPException(status_code=422, detail="referee_account_number must be exactly 10 digits")
+    if not (code.isdigit() and 3 <= len(code) <= 6):
+        raise HTTPException(status_code=422, detail="referee_bank_code must be 3 to 6 digits")
+    if len(name) < 2:
+        raise HTTPException(status_code=422, detail="customer_full_name is required")
+    data.referee_account_number, data.referee_bank_code, data.customer_full_name = acct, code, name
+
+    limit = get_settings().daily_request_limit
+    if limit > 0:
+        since = utcnow() - timedelta(hours=24)
+        sent = session.exec(
+            select(func.count()).select_from(ReferenceRequest).where(
+                ReferenceRequest.requesting_institution_id == institution.id, ReferenceRequest.created_at >= since
+            )
+        ).one()
+        if sent >= limit:
+            raise HTTPException(status_code=429, detail=f"Daily limit of {limit} requests reached. Try again tomorrow or contact Fidra.")
+
+    dup = session.exec(
+        select(ReferenceRequest).where(
+            ReferenceRequest.requesting_institution_id == institution.id,
+            ReferenceRequest.referee_account_number == acct,
+            ReferenceRequest.referee_bank_code == code,
+            func.lower(ReferenceRequest.customer_full_name) == name.lower(),
+            ReferenceRequest.status.in_(OPEN_STATUSES),
+        )
+    ).first()
+    if dup and not (dup.expires_at and dup.expires_at < utcnow()):
+        raise HTTPException(status_code=409, detail=f"An open request for this applicant and referee already exists ({dup.public_id}).")
+
+
 def create_reference_request(
     session: Session,
     data: CreateReferenceRequest,
     requesting_institution: Institution,
     base_url: str = "http://localhost:8000",
 ) -> ReferenceRequest:
+    precheck_request(session, data, requesting_institution)
     # Resolve responding institution by bank code
     responding = session.exec(
         select(Institution).where(
@@ -86,6 +131,7 @@ def create_reference_request(
 
     if use_path_b and responding:
         # Path B: the referee's bank answers from its inbox (or through the API)
+        req.bank_due_at = utcnow() + timedelta(hours=get_settings().bank_response_hours)
         _log_status(
             session, req, RequestStatus.pending_bank_confirmation,
             actor="system",
@@ -329,7 +375,66 @@ def pending_for_bank(session: Session, institution_id: int):
         .order_by(ReferenceRequest.created_at.desc())
     ).all()
     now = utcnow()
-    return [r for r in rows if not (r.expires_at and r.expires_at < now)]
+    live = [r for r in rows if not (r.expires_at and r.expires_at < now)]
+    # Overdue first (longest overdue at the top), then whatever is due soonest.
+    live.sort(key=lambda r: (0 if (r.bank_due_at and r.bank_due_at < now) else 1, r.bank_due_at or r.created_at))
+    return live
+
+
+def remind_bank(session: Session, req: ReferenceRequest, institution: Institution) -> ReferenceRequest:
+    """The requesting bank nudges the referee's bank. Limited to one reminder per cooldown period."""
+    if req.requesting_institution_id != institution.id:
+        raise HTTPException(status_code=404, detail="Reference request not found")
+    if req.path != "path_b" or req.status != RequestStatus.pending_bank_confirmation:
+        raise HTTPException(status_code=400, detail="Only a request that is waiting for the referee's bank can be reminded.")
+    cooldown = timedelta(hours=get_settings().reminder_cooldown_hours)
+    if req.last_reminder_at and utcnow() - req.last_reminder_at < cooldown:
+        raise HTTPException(status_code=429, detail=f"A reminder was already sent recently. You can send another after {cooldown.total_seconds() / 3600:g} hours.")
+    req.reminder_count += 1
+    req.last_reminder_at = utcnow()
+    _log_status(session, req, req.status, actor="requester", note=f"Reminder sent to the bank ({req.reminder_count})")
+    session.commit()
+    session.refresh(req)
+    return req
+
+
+def insights(session: Session, institution_id: int, days: int = 30) -> dict:
+    """Plain numbers for supervisors: how this bank is doing as a requester and as a responder."""
+    now = utcnow()
+    since = now - timedelta(days=days)
+    mine = session.exec(select(ReferenceRequest).where(
+        ReferenceRequest.requesting_institution_id == institution_id, ReferenceRequest.created_at >= since)).all()
+    done = [r for r in mine if r.status == RequestStatus.completed and r.completed_at]
+    ended = [r for r in mine if r.status in (RequestStatus.completed, RequestStatus.failed, RequestStatus.declined,
+                                             RequestStatus.expired, RequestStatus.cancelled)]
+    asking = {
+        "sent": len(mine),
+        "completed": len(done),
+        "completion_rate": (len(done) / len(ended)) if ended else None,
+        "median_hours": median([(r.completed_at - r.created_at).total_seconds() / 3600 for r in done]) if done else None,
+        "overdue": sum(1 for r in mine if r.status == RequestStatus.pending_bank_confirmation and r.bank_due_at and r.bank_due_at < now),
+    }
+    theirs = session.exec(select(ReferenceRequest).where(
+        ReferenceRequest.responding_institution_id == institution_id, ReferenceRequest.path == "path_b",
+        ReferenceRequest.created_at >= since)).all()
+    ids = [r.id for r in theirs]
+    events = session.exec(select(StatusEvent).where(StatusEvent.request_id.in_(ids), StatusEvent.actor == "bank")
+                          .order_by(StatusEvent.created_at.asc())).all() if ids else []
+    first = {}
+    for e in events:
+        first.setdefault(e.request_id, e.created_at)
+    created = {r.id: r.created_at for r in theirs}
+    times = [(t - created[i]).total_seconds() / 3600 for i, t in first.items()]
+    waiting = pending_for_bank(session, institution_id)
+    answering = {
+        "received": len(theirs),
+        "answered": len(first),
+        "median_hours": median(times) if times else None,
+        "waiting": len(waiting),
+        "overdue": sum(1 for r in waiting if r.bank_due_at and r.bank_due_at < now),
+        "unclear": sum(1 for e in events if "clearer copy" in (e.note or "")),
+    }
+    return {"days": days, "asking": asking, "answering": answering}
 
 
 # ---------------- signed bank forms ----------------

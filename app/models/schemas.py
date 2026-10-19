@@ -148,6 +148,9 @@ class InboxItem(BaseModel):
     referee_agreed: bool
     verification_method: str = "referee_link"
     form_status: Optional[str] = None
+    due_at: Optional[datetime] = None
+    overdue: bool = False
+    reminder_count: int = 0
     created_at: datetime
     expires_at: Optional[datetime] = None
 
@@ -156,3 +159,8 @@ class SignedFormResult(BaseModel):
     public_id: str
     status: RequestStatus
     form_status: Optional[str] = None
+
+
+class RemindResult(BaseModel):
+    public_id: str
+    reminder_count: int

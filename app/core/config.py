@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     # Signed reference forms uploaded by the requesting bank are deleted after this many days.
     signed_form_retention_days: int = 90
 
+    # How long a responding bank has to answer a Path B request before it shows as overdue.
+    bank_response_hours: int = 48
+    # Most requests one institution can send in 24 hours (0 turns the limit off).
+    daily_request_limit: int = 200
+    # Minimum gap between reminders to the same bank about the same request.
+    reminder_cooldown_hours: int = 12
+
     # Staff dashboard sessions. Set SESSION_SECRET in production so logins survive restarts.
     session_secret: str = ""
     session_https_only: bool = False   # set true on Render (HTTPS)

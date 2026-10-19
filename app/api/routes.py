@@ -13,6 +13,7 @@ from app.models.schemas import (
     BankResponseResult,
     InboxItem,
     SignedFormResult,
+    RemindResult,
     StaffOut,
     ReferenceRequestOut,
     ReferenceRequestDetail,
@@ -27,7 +28,7 @@ from app.models.schemas import (
 from app.services import reference_service as svc
 from app.services.institution_service import create_institution as create_institution_record
 from app.core.security import hash_password
-from app.models.models import StaffUser
+from app.models.models import StaffUser, utcnow
 
 router = APIRouter()
 
@@ -224,7 +225,9 @@ def inbox(
             referee_account_number=r.referee_account_number, purpose=r.purpose,
             requesting_institution=requester.name if requester else "",
             referee_agreed=bool(r.referee_consent_at), verification_method=r.verification_method,
-            form_status=r.form_status, created_at=r.created_at, expires_at=r.expires_at,
+            form_status=r.form_status, due_at=r.bank_due_at,
+            overdue=bool(r.bank_due_at and r.bank_due_at < utcnow()), reminder_count=r.reminder_count,
+            created_at=r.created_at, expires_at=r.expires_at,
         ))
     return out
 
@@ -274,3 +277,15 @@ def download_signed_form(
     return Response(content=form.data, media_type=form.content_type,
                     headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
                              "Content-Disposition": f'attachment; filename="signed-form-{public_id}"'})
+
+
+@router.post("/reference-requests/{public_id}/remind", response_model=RemindResult, tags=["Bank responses"])
+def remind(
+    public_id: str,
+    institution: Institution = Depends(get_current_institution),
+    session: Session = Depends(get_session),
+):
+    """Remind the referee's bank about a request that is still waiting for it. One reminder per 12 hours."""
+    req = svc.get_request_by_public_id(session, public_id)
+    req = svc.remind_bank(session, req, institution)
+    return RemindResult(public_id=req.public_id, reminder_count=req.reminder_count)
