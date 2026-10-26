@@ -74,6 +74,9 @@ When the referee's bank is on Fidra, the requesting bank's officer chooses "Sign
 - New columns on referencerequest (bank_due_at, last_reminder_at, reminder_count). Start from a fresh database.
 - Deliberately not built: answering many requests in one click. It invites rubber-stamping, which is the weakness Fidra is meant to fix.
 
+## Update: easier-to-follow docs page (new)
+The side menu and page are now grouped by task with plain labels (Set up a bank, Ask another bank for a reference, Answer another bank, Pages for referees and customers, System). Each action has a plain-language title and a one-line description, and the technical path sits beside it. Search finds actions by name or by path, the current section is highlighted as you scroll, and small screens get a "Jump to a section" menu. Only app/static/fidra-docs.html changed.
+
 ## Important
 - The institution table changed (api_key -> api_key_hash). Existing databases are not migrated. Start from a fresh database, then recreate institutions through the admin endpoint.
 - Any API keys that were ever returned by the old open endpoint or printed in logs should be treated as compromised.

@@ -30,7 +30,8 @@ header button{background:none;border:1px solid #1E3556;border-radius:8px;padding
 .wrap{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1480px;margin:0 auto}
 nav{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:20px 16px;border-right:1px solid var(--ln)}
 nav h4{font:600 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin:20px 0 6px}
-nav a{display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:6px;color:var(--tx);font-size:13px}nav a:hover{background:var(--sf)}
+nav a{display:flex;gap:9px;align-items:center;padding:7px 10px;border-radius:8px;color:var(--tx);font-size:14px;line-height:1.35}nav a:hover{background:var(--sf)}nav a.on{background:var(--sf);font-weight:600;box-shadow:inset 3px 0 0 var(--ac)}nav a .m{font-size:9.5px;padding:1px 5px;flex:none}
+.gb{color:var(--mu);margin:-6px 0 16px;max-width:640px}.oh.sm code{font-size:12.5px;color:var(--mu);background:none;padding:0}.oh.sm{gap:8px}.jump{display:none;width:100%;margin-bottom:16px;padding:11px 12px;font-size:15px}
 nav input{width:100%}
 main{padding:40px 40px 80px;min-width:0}
 section{margin-bottom:48px}
@@ -67,7 +68,7 @@ details.try{margin-top:16px;border-top:1px solid var(--ln);padding-top:12px}summ
 .flow .n i{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--mu);margin-right:6px}.flow .n.ok i{background:var(--ac)}.flow .n.info i{background:var(--lk)}.flow .n.bad i{background:var(--bdt)}.flow .n.neu i{background:var(--mu)}
 .flow:not(.x) .n:not(:last-child)::after{content:'';display:inline-block;width:26px;height:2px;background:var(--ln);margin:0 8px}.flow.x .n{margin-right:6px}
 @media(max-width:1200px){.op{display:block}.r{position:static;margin-top:16px}}
-@media(max-width:900px){.wrap{display:block}nav{display:none}main{padding:24px 18px}}
+@media(max-width:900px){.wrap{display:block}nav{display:none}main{padding:24px 18px}.jump{display:block}}
 </style>
 </head>
 <body>
@@ -118,7 +119,7 @@ function op(o){
  jsM=`const fd = new FormData();\nfd.append("file", fileInput.files[0]);\nconst r = await fetch("${u}", {\n  method: "${V}",\n  headers: ${JSON.stringify(hdr)},\n  body: fd,\n});\nconsole.log(await r.json());`;
  const rt=r=>{const k=Object.keys(r.content||{})[0];return k?k+' → '+tstr(r.content[k].schema):'—'};
  const exm=ok&&okct==='application/json'&&ok[1].content[okct].schema&&Object.keys(ok[1].content[okct].schema).length?`<details open><summary>Example response</summary><pre class="ex">${esc(JSON.stringify(exr(ok[1].content[okct].schema),null,2))}</pre></details>`:'';
- const left=`<div class="l"><div class="oh"><span class="m ${V}">${V}</span><code>${esc(o.p)}</code>${keyed?'<a class="keyb" href="#auth">API key</a>':''}</div><h3>${esc(o.summary||'')}</h3>${hosted?`<p class="d">${esc(HD[V+' '+o.p]||'')}</p>`:''}
+ const left=`<div class="l"><h3 style="margin:0 0 6px;font-size:21px">${esc(nm(o))}</h3><div class="oh sm"><span class="m ${V}">${V}</span><code>${esc(o.p)}</code>${keyed?'<a class="keyb" href="#auth">API key</a>':''}</div><p class="d">${esc(HELP[o.operationId]||HD[V+' '+o.p]||'')}</p>
  ${prm.length?'<table><tr><th>Parameter<th>In<th>Type<th>'+prm.map(x=>`<tr><td class=mono>${x.name}<td>${x.in}<td><code>${esc(tstr(x.schema))}</code><td>${x.required?'<span class=req>required</span>':'optional'}`).join('')+'</table>':''}
  ${bs?`<p style="margin:8px 0 0;color:var(--mu)">Request body · <code>${ct}</code></p>`+props(bs):''}
  ${hosted?'':`<table><tr><th>Response<th>Returns${resp.map(([c,r])=>`<tr><td><span class="chip ${c[0]==='2'?'ok':'bad'}">${c}</span><td><code>${esc(rt(r))}</code>`).join('')}</table>`+exm}</div>`;
@@ -129,21 +130,51 @@ function op(o){
  <button class="send">Send request</button><div class="res"></div></details></div>`;
  return`<div class="op${hosted?' hosted':''}" id="${o.operationId}">${left}${right}</div>`}
 
+const GROUPS=[
+ {id:'setup',title:'Set up a bank',blurb:'Fidra staff do this once for each bank. It needs the admin key.',ops:['create_institution_v1_institutions_post','create_staff_v1_institutions__code__staff_post','list_institutions_v1_institutions_get']},
+ {id:'ask',title:'Ask another bank for a reference',blurb:'Use these when a customer is opening an account and you need a reference from another bank.',ops:['create_reference_v1_reference_requests_post','upload_signed_form_v1_reference_requests__public_id__signed_form_post','get_reference_v1_reference_requests__public_id__get','list_references_v1_reference_requests_get','remind_v1_reference_requests__public_id__remind_post']},
+ {id:'answer',title:'Answer another bank',blurb:'Use these when another bank asks you to confirm an account held at your bank.',ops:['inbox_v1_inbox_get','download_signed_form_v1_reference_requests__public_id__signed_form_get','bank_response_v1_reference_requests__public_id__bank_response_post']},
+ {id:'pages',title:'Pages for referees and customers',blurb:'Fidra serves these pages. The referee opens referee_authorize_url and the customer follows customer_status_url, both returned when you create a request. Your own system does not call them.',ops:['referee_page_r__token__get','referee_authorize_r__token__authorize_post','referee_decline_r__token__decline_post','customer_status_c__token__get']},
+ {id:'system',title:'System',blurb:'',ops:['homepage__get','health_health_get']}
+];
+const LABEL={create_institution_v1_institutions_post:'Register a bank',create_staff_v1_institutions__code__staff_post:'Add a staff login',list_institutions_v1_institutions_get:'See the banks on Fidra',
+ create_reference_v1_reference_requests_post:'Start a reference request',upload_signed_form_v1_reference_requests__public_id__signed_form_post:'Upload the signed form',get_reference_v1_reference_requests__public_id__get:'Check one request',list_references_v1_reference_requests_get:'See all your requests',remind_v1_reference_requests__public_id__remind_post:'Remind the bank',
+ inbox_v1_inbox_get:'See what is waiting for you',download_signed_form_v1_reference_requests__public_id__signed_form_get:'View the signed form',bank_response_v1_reference_requests__public_id__bank_response_post:'Send your answer',
+ referee_page_r__token__get:"The referee's page",referee_authorize_r__token__authorize_post:'Referee agrees',referee_decline_r__token__decline_post:'Referee declines',customer_status_c__token__get:"The customer's status page",homepage__get:'Homepage',health_health_get:'Is Fidra running?'};
+const HELP={create_institution_v1_institutions_post:'Registers a bank, fintech or lender on Fidra and returns its API key. The key is shown once, so copy it straight away.',
+ create_staff_v1_institutions__code__staff_post:'Creates a dashboard login for someone at a bank. They choose their own password the first time they sign in.',
+ list_institutions_v1_institutions_get:'Lists the institutions on Fidra. API keys are not included.',
+ create_reference_v1_reference_requests_post:"Asks another bank for a reference on a customer. Give the customer's name and the referee's account number and bank code. Fidra checks the details and tells you if the same request is already open.",
+ upload_signed_form_v1_reference_requests__public_id__signed_form_post:'Attaches a photo or scan of the form the referee signed. Use it when the referee\'s bank is on Fidra. Send it again if the bank asks for a clearer copy.',
+ get_reference_v1_reference_requests__public_id__get:'Shows where one request stands, with its full history. Repeat this call until the request reaches a final status.',
+ list_references_v1_reference_requests_get:'Lists the requests your bank has made, newest first.',
+ remind_v1_reference_requests__public_id__remind_post:"Nudges the referee's bank about a request that is still waiting. You can send one reminder per cooldown period (12 hours by default).",
+ inbox_v1_inbox_get:'Lists the requests waiting for your bank to answer, most urgent first.',
+ download_signed_form_v1_reference_requests__public_id__signed_form_get:'Downloads the signed form so your staff can compare the signature with the specimen. Every download is logged.',
+ bank_response_v1_reference_requests__public_id__bank_response_post:"Sends your bank's answer: whether the account exists, is active and in good standing, and whether the signature matches when a form was attached.",
+ referee_page_r__token__get:'The page a referee opens from their link. It shows who the reference is for and lets them agree or decline.',
+ referee_authorize_r__token__authorize_post:'Sent when the referee presses the agree button on their page.',
+ referee_decline_r__token__decline_post:'Sent when the referee declines.',customer_status_c__token__get:'The page where the customer can follow their request.',
+ homepage__get:'The Fidra homepage.',health_health_get:'A quick check that the service is up. Use it for uptime monitoring.'};
+function groupsOf(){const g=GROUPS.map(x=>({...x,list:x.ops.map(id=>ops.find(o=>o.operationId===id)).filter(Boolean)})),known=new Set(GROUPS.flatMap(x=>x.ops)),rest=ops.filter(o=>!known.has(o.operationId));if(rest.length)g.push({id:'more',title:'More',blurb:'',list:rest});return g}
+const nm=o=>LABEL[o.operationId]||o.summary||o.p;
+function spy(){if(!('IntersectionObserver' in window))return;const L={};$$('#nav a.ep').forEach(a=>L[a.getAttribute('href').slice(1)]=a);
+ const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){$$('#nav a.on').forEach(x=>x.classList.remove('on'));if(L[e.target.id])L[e.target.id].classList.add('on')}}),{rootMargin:'-15% 0px -75% 0px'});$$('.op').forEach(o=>io.observe(o))}
 function render(){
  const sc=spec.components&&spec.components.schemas||{},tags=[...new Set(ops.map(o=>o.tag))];
  $('#ver').textContent='v'+spec.info.version;$('#oj').href=BASE+'/openapi.json';
- $('#nav').innerHTML='<input id="flt" placeholder="Filter endpoints"><h4>Start</h4><a href="#intro">Introduction</a><a href="#auth">Authentication</a><a href="#status">Request statuses</a><a href="#errors">Errors</a>'+tags.map(t=>`<h4>${tn(t)}</h4>`+ops.filter(o=>o.tag===t).map(o=>`<a class="ep" href="#${o.operationId}"><span class="m ${o.v.toUpperCase()}">${o.v.toUpperCase()}</span>${esc(o.p)}</a>`).join('')).join('')+'<h4>Reference</h4><a href="#schemas">Schemas</a>';
- $('#flt').oninput=e=>$$('.ep').forEach(a=>a.hidden=!a.textContent.toLowerCase().includes(e.target.value.toLowerCase()));
+ const G=groupsOf();$('#nav').innerHTML='<input id="flt" placeholder="Search, for example: remind"><h4>Start here</h4><a href="#intro">Overview</a><a href="#auth">Your API key</a><a href="#status">What the statuses mean</a><a href="#errors">If something goes wrong</a>'+G.map(g=>`<h4>${g.title}</h4>`+g.list.map(o=>`<a class="ep" href="#${o.operationId}" title="${o.v.toUpperCase()} ${esc(o.p)}"><span class="m ${o.v.toUpperCase()}">${o.v.toUpperCase()}</span><span>${esc(nm(o))}</span></a>`).join('')).join('')+'<h4>Reference</h4><a href="#schemas">Data formats</a>';
+ $('#flt').oninput=e=>$$('.ep').forEach(a=>a.hidden=!(a.textContent+' '+a.title).toLowerCase().includes(e.target.value.toLowerCase()));
  const tag=(spec.info.description||'').split('—').pop().trim()||'The rail that moves trust between institutions.';
- $('#main').innerHTML=`<section id="intro"><div class="ov">Reference exchange API</div><h1>Fidra API</h1><p class="lead">${esc(tag)}</p>
+ $('#main').innerHTML=`<select class="jump" onchange="if(this.value)location.hash=this.value" aria-label="Jump to a section"><option value="">Jump to a section</option><option value="intro">Overview</option><option value="auth">Your API key</option><option value="status">What the statuses mean</option>${G.map(g=>`<optgroup label="${g.title}">${g.list.map(o=>`<option value="${o.operationId}">${esc(nm(o))}</option>`).join('')}</optgroup>`).join('')}</select><section id="intro"><div class="ov">Reference exchange API</div><h1>Fidra API</h1><p class="lead">${esc(tag)}</p>
  <label for="base">Base URL</label><input id="base" value="${esc(BASE)}">
  <div class="card"><b>Quickstart</b><ol style="margin:8px 0 0;padding-left:20px"><li>Get your institution registered. A Fidra admin calls <code>POST /v1/institutions</code> and gives you the returned <code>api_key</code>, which is shown only once.</li><li><code>POST /v1/reference-requests</code> with your key in <code>X-API-Key</code>, the customer's name, and the referee's account number and bank code. The response includes <code>referee_authorize_url</code> and <code>customer_status_url</code>.</li><li><code>GET /v1/reference-requests/{public_id}</code> to follow <code>status</code> and <code>history</code> until the request reaches a final status.</li></ol></div></section>
- <section id="auth"><h2>Authentication</h2><p>Send your institution's key in the <code>X-API-Key</code> header. The key is shown once, when your institution is created by a Fidra admin, so store it securely. Paste it here to use it in the Try it panels. It stays in this tab only and is never added to the code samples.</p><label for="key">X-API-Key</label><input id="key" type="password" autocomplete="off" value="${esc(KEY)}" placeholder="Paste your API key"></section>
- <section id="status"><h2>Request statuses</h2><p>A reference request moves through these <code>status</code> values.</p>${flow(sc)}</section>
- <section id="errors"><h2>Errors</h2><p>Invalid requests return <code>422</code> with a <code>detail</code> array describing each problem. This applies to every endpoint.</p><pre class="ex">{\n  "detail": [\n    { "loc": ["body", "customer_full_name"], "msg": "Field required", "type": "missing" }\n  ]\n}</pre></section>
- ${tags.map(t=>`<section id="tag-${t}"><h2>${tn(t)}</h2>${t==='Public'?HOSTED_INTRO:''}${ops.filter(o=>o.tag===t).map(op).join('')}</section>`).join('')}
- <section id="schemas"><h2>Schemas</h2>${Object.entries(sc).filter(([n])=>!/ValidationError$/.test(n)).map(([n,s])=>`<details class="sch"><summary class="mono">${n}</summary>${s.enum?s.enum.map(e=>`<span class="chip ${tone(e)}">${e}</span>`).join(''):props(s)}</details>`).join('')}</section>`;
- $('#key').oninput=e=>KEY=e.target.value;
+ <section id="auth"><h2>Your API key</h2><p>Send your institution's key in the <code>X-API-Key</code> header. The key is shown once, when your institution is created by a Fidra admin, so store it securely. Paste it here to use it in the Try it panels. It stays in this tab only and is never added to the code samples.</p><label for="key">X-API-Key</label><input id="key" type="password" autocomplete="off" value="${esc(KEY)}" placeholder="Paste your API key"></section>
+ <section id="status"><h2>What the statuses mean</h2><p>A reference request moves through these <code>status</code> values.</p>${flow(sc)}</section>
+ <section id="errors"><h2>If something goes wrong</h2><p>Invalid requests return <code>422</code> with a <code>detail</code> array describing each problem. This applies to every endpoint.</p><pre class="ex">{\n  "detail": [\n    { "loc": ["body", "customer_full_name"], "msg": "Field required", "type": "missing" }\n  ]\n}</pre></section>
+ ${G.map(g=>`<section id="g-${g.id}"><h2>${g.title}</h2>${g.blurb?`<p class="gb">${g.blurb}</p>`:''}${g.list.map(op).join('')}</section>`).join('')}
+ <section id="schemas"><h2>Data formats</h2>${Object.entries(sc).filter(([n])=>!/ValidationError$/.test(n)).map(([n,s])=>`<details class="sch"><summary class="mono">${n}</summary>${s.enum?s.enum.map(e=>`<span class="chip ${tone(e)}">${e}</span>`).join(''):props(s)}</details>`).join('')}</section>`;
+ $('#key').oninput=e=>KEY=e.target.value;spy();
  $('#base').onchange=e=>{BASE=e.target.value.replace(/\/$/,'');render();health()};
 }
 function start(s){spec=s;ops=[];for(const[p,m]of Object.entries(s.paths))for(const[v,o]of Object.entries(m))ops.push({...o,p,v,tag:(o.tags||[])[0]||'System'});render()}
