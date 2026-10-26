@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from pathlib import Path
 
 from app.core.config import get_settings
-from app.core.database import create_db_and_tables, engine
+from app.core.database import check_schema, create_db_and_tables, engine
 from app.models.models import Institution
 from app.services.institution_service import create_institution
 from app.services.reference_service import purge_expired_forms
@@ -62,9 +62,17 @@ def seed_institutions():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_db_and_tables()
-    with Session(engine) as _s:
-        purge_expired_forms(_s)
+    print("Fidra starting: preparing the database...", flush=True)
+    try:
+        create_db_and_tables()
+        check_schema()
+        with Session(engine) as _s:
+            purge_expired_forms(_s)
+    except Exception as e:
+        print(f"Fidra could not prepare the database ({type(e).__name__}): {e}\n"
+              "Check DATABASE_URL and that the database is running and reachable from this service.", flush=True)
+        raise
+    print("Database ready.", flush=True)
     if settings.seed_demo_data:
         seed_institutions()
     yield

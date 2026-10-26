@@ -77,6 +77,13 @@ When the referee's bank is on Fidra, the requesting bank's officer chooses "Sign
 ## Update: easier-to-follow docs page (new)
 The side menu and page are now grouped by task with plain labels (Set up a bank, Ask another bank for a reference, Answer another bank, Pages for referees and customers, System). Each action has a plain-language title and a one-line description, and the technical path sits beside it. Search finds actions by name or by path, the current section is highlighted as you scroll, and small screens get a "Jump to a section" menu. Only app/static/fidra-docs.html changed.
 
+## Update: safer startup (new)
+- Fixed: with the newer SQLAlchemy that Render installs, a plain postgres:// or postgresql:// address made the app look for a different database driver than the one in requirements.txt, so it could not start. app/core/database.py now names the driver explicitly. All test suites were also run against a real Postgres database.
+- An unreachable database now fails in about 10 seconds with a clear message in the deploy log (before, a bad connection could leave the service stuck until Render's 15-minute port timeout).
+- If the database tables were made by an older version of Fidra, startup stops with a message listing the missing columns. Fix: use an empty database and deploy again.
+- The log now prints "Fidra starting: preparing the database..." and "Database ready." so you can see where a start-up stops.
+- Changed files: app/core/database.py, app/main.py.
+
 ## Important
 - The institution table changed (api_key -> api_key_hash). Existing databases are not migrated. Start from a fresh database, then recreate institutions through the admin endpoint.
 - Any API keys that were ever returned by the old open endpoint or printed in logs should be treated as compromised.
